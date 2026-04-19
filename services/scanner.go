@@ -12,8 +12,10 @@ import (
 	"time"
 )
 
-// ValidateURL prevents SSRF by blocking private/internal URLs
-func ValidateURL(rawURL string) error {
+// เพิ่ม struct สำหรับ Dependency Injection
+type ScannerService struct{}
+
+func (s ScannerService) ValidateURL(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL format")
@@ -28,7 +30,6 @@ func ValidateURL(rawURL string) error {
 		return fmt.Errorf("URL must contain a valid hostname")
 	}
 
-	// Block localhost variants
 	blockedHosts := []string{"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 	for _, blocked := range blockedHosts {
 		if host == blocked {
@@ -36,16 +37,15 @@ func ValidateURL(rawURL string) error {
 		}
 	}
 
-	// Block private IP ranges (SSRF protection)
 	ip := net.ParseIP(host)
 	if ip != nil {
 		privateRanges := []string{
 			"10.0.0.0/8",
 			"172.16.0.0/12",
 			"192.168.0.0/16",
-			"169.254.0.0/16", // link-local
-			"100.64.0.0/10",  // shared address space
-			"fc00::/7",       // IPv6 unique local
+			"169.254.0.0/16",
+			"100.64.0.0/10",
+			"fc00::/7",
 		}
 		for _, cidr := range privateRanges {
 			_, network, _ := net.ParseCIDR(cidr)
@@ -58,13 +58,11 @@ func ValidateURL(rawURL string) error {
 	return nil
 }
 
-// FetchHTML fetches page HTML and interesting response headers
-func FetchHTML(targetURL string) (string, map[string]string, error) {
+func (s ScannerService) FetchHTML(targetURL string) (string, map[string]string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Prevent open redirect to internal network
-			if err := ValidateURL(req.URL.String()); err != nil {
+			if err := s.ValidateURL(req.URL.String()); err != nil {
 				return fmt.Errorf("redirect blocked: %s", err.Error())
 			}
 			if len(via) >= 3 {
@@ -86,15 +84,13 @@ func FetchHTML(targetURL string) (string, map[string]string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Limit response to 5MB
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		return "", nil, err
 	}
 
-	// Collect tech-revealing headers
 	headers := map[string]string{}
-	interesting := []string{"server", "x-powered-by", "via", "x-framework", "x-runtime", "x-generator", "x-aspnet-version"}
+	interesting := []string{"server", "x-powered-by", "via", "x-framework", "x-runtime", "x-generator"}
 	for _, h := range interesting {
 		if val := resp.Header.Get(h); val != "" {
 			headers[h] = val
@@ -104,22 +100,20 @@ func FetchHTML(targetURL string) (string, map[string]string, error) {
 	return string(body), headers, nil
 }
 
-// ScanEndpoints extracts API endpoints from HTML content using regex
-func ScanEndpoints(html string) []string {
+func (s ScannerService) ScanEndpoints(html string) []string {
 	seen := map[string]bool{}
 	var results []string
 
-	add := func(s string) {
-		s = strings.TrimRight(s, ".,;:)'\"\\")
-		if s != "" && !seen[s] {
-			seen[s] = true
-			results = append(results, s)
+	add := func(str string) {
+		str = strings.TrimRight(str, ".,;:)'\"\\")
+		if str != "" && !seen[str] {
+			seen[str] = true
+			results = append(results, str)
 		}
 	}
 
 	apiKeywords := []string{"api", "graphql", "gql", "rest", "v1", "v2", "v3", "endpoint", "backend", "service"}
 
-	// 1. Full URLs containing API keywords
 	urlRe := regexp.MustCompile(`https?://[^\s"'<>{}\[\]\\|^` + "`" + `]+`)
 	for _, u := range urlRe.FindAllString(html, -1) {
 		lower := strings.ToLower(u)
@@ -131,7 +125,6 @@ func ScanEndpoints(html string) []string {
 		}
 	}
 
-	// 2. Relative paths like /api/users, /v1/login
 	pathRe := regexp.MustCompile(`["'/]((?:api|graphql|gql|rest|v[0-9]+)/[^\s"'<>{}\[\]\\]{2,120})["'/]`)
 	for _, m := range pathRe.FindAllStringSubmatch(html, -1) {
 		if len(m) > 1 {
@@ -139,7 +132,6 @@ func ScanEndpoints(html string) []string {
 		}
 	}
 
-	// 3. fetch() / axios() / xhr.open() calls
 	fetchRe := regexp.MustCompile(`(?:fetch|axios(?:\.[a-z]+)?|xhr\.open)\s*\(\s*["` + "`" + `'](https?://[^"` + "`" + `']+|/[^"` + "`" + `']{2,120})["` + "`" + `']`)
 	for _, m := range fetchRe.FindAllStringSubmatch(html, -1) {
 		if len(m) > 1 {
@@ -150,9 +142,8 @@ func ScanEndpoints(html string) []string {
 	return results
 }
 
-// DNSLookup probes common API subdomains
-func DNSLookup(domain string) []string {
-	probes := []string{"api", "backend", "service", "services", "gateway", "gw", "rest", "graphql", "grpc", "internal"}
+func (s ScannerService) DNSLookup(domain string) []string {
+	probes := []string{"api", "backend", "service", "services", "gateway", "gw", "rest", "graphql"}
 	var found []string
 
 	for _, sub := range probes {
@@ -166,11 +157,11 @@ func DNSLookup(domain string) []string {
 	return found
 }
 
-// Scan orchestrates the full scan pipeline
-func Scan(targetURL string) models.ScanResult {
+// Scan คือ method หลัก เรียกใช้จาก Handler
+func (s ScannerService) Scan(targetURL string) models.ScanResult {
 	start := time.Now()
 
-	if err := ValidateURL(targetURL); err != nil {
+	if err := s.ValidateURL(targetURL); err != nil {
 		return models.ScanResult{
 			Status: "error",
 			URL:    targetURL,
@@ -181,7 +172,7 @@ func Scan(targetURL string) models.ScanResult {
 	parsed, _ := url.Parse(targetURL)
 	domain := parsed.Hostname()
 
-	html, headers, err := FetchHTML(targetURL)
+	html, headers, err := s.FetchHTML(targetURL)
 	if err != nil {
 		return models.ScanResult{
 			Status: "error",
@@ -190,15 +181,12 @@ func Scan(targetURL string) models.ScanResult {
 		}
 	}
 
-	endpoints := ScanEndpoints(html)
-	dnsResults := DNSLookup(domain)
-
 	return models.ScanResult{
 		Status:         "success",
 		URL:            targetURL,
-		FoundEndpoints: endpoints,
+		FoundEndpoints: s.ScanEndpoints(html),
 		Headers:        headers,
-		DNSResults:     dnsResults,
+		DNSResults:     s.DNSLookup(domain),
 		ScanDuration:   fmt.Sprintf("%.2fs", time.Since(start).Seconds()),
 	}
 }
