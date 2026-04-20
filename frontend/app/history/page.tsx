@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { getHistory, deleteHistory } from '@/lib/api'
 import { ScanHistory, HistoryResponse } from '@/types'
 import {
   History, Trash2, ChevronLeft, ChevronRight,
-  Globe, Clock, Zap, Search, AlertCircle, CheckCircle
+  Globe, Clock, Zap, Search, AlertCircle,
+  CheckCircle, Eye
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -16,19 +18,17 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
 
-const fetchHistory = useCallback(async () => {
-  setLoading(true)
-  try {
-    const result = await getHistory(page, 10, statusFilter)
-    console.log('history result:', result) // ← เพิ่มตรงนี้
-    setData(result)
-  } catch (e) {
-    console.error('history error:', e)     // ← เพิ่มตรงนี้
-    setData(null)
-  } finally {
-    setLoading(false)
-  }
-}, [page, statusFilter])
+  const fetchHistory = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await getHistory(page, 10, statusFilter)
+      setData(result)
+    } catch {
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [page, statusFilter])
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
@@ -97,9 +97,9 @@ const fetchHistory = useCallback(async () => {
                 <div className="col-span-4">URL</div>
                 <div className="col-span-2 text-center">สถานะ</div>
                 <div className="col-span-2 text-center">Endpoints</div>
-                <div className="col-span-2 text-center">โหมด</div>
+                <div className="col-span-1 text-center">โหมด</div>
                 <div className="col-span-1 text-center">เวลา</div>
-                <div className="col-span-1 text-center">ลบ</div>
+                <div className="col-span-2 text-center">จัดการ</div>
               </div>
 
               {/* Rows */}
@@ -151,8 +151,8 @@ function HistoryRow({ item, onDelete, deleting }: {
   onDelete: (id: number) => void
   deleting: boolean
 }) {
+  const router = useRouter()
   const totalEndpoints = item.found_endpoints_count + item.js_endpoints_count + item.network_calls_count
-  const date = new Date(item.created_at)
 
   return (
     <div className="grid grid-cols-12 gap-4 px-5 py-4 hover:bg-white/2 transition-colors group items-center">
@@ -178,7 +178,7 @@ function HistoryRow({ item, onDelete, deleting }: {
       </div>
 
       {/* Mode */}
-      <div className="col-span-2 flex justify-center">
+      <div className="col-span-1 flex justify-center">
         <span className={clsx(
           'badge text-xs',
           item.scan_mode === 'deep'
@@ -197,8 +197,18 @@ function HistoryRow({ item, onDelete, deleting }: {
         </div>
       </div>
 
-      {/* Delete */}
-      <div className="col-span-1 flex justify-center">
+      {/* Actions */}
+      <div className="col-span-2 flex justify-center items-center gap-2">
+        {/* ✅ ปุ่มดูรายละเอียด */}
+        <button
+          onClick={() => router.push(`/history/${item.id}`)}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/8 border border-accent/15 text-accent/70 hover:text-accent hover:bg-accent/15 text-xs transition-all"
+        >
+          <Eye className="w-3 h-3" />
+          ดูรายละเอียด
+        </button>
+
+        {/* ปุ่มลบ */}
         <button
           onClick={() => onDelete(item.id)}
           disabled={deleting}

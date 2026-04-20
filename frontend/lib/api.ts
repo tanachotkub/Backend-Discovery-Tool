@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { Job, HistoryResponse } from '@/types'
+import { Job, HistoryResponse, ScanHistory } from '@/types' // ← ต้องมี ScanHistory ด้วย
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
@@ -39,6 +39,13 @@ export async function getHistory(page = 1, perPage = 10, status = ''): Promise<H
     total_pages,
   }
 }
+
+// ✅ เพิ่มใหม่
+export async function getHistoryById(id: number): Promise<ScanHistory> {
+  const res = await api.get(`/api/scans/${id}`)
+  return res.data.data
+}
+
 export async function deleteHistory(id: number): Promise<void> {
   await api.delete(`/api/scans/${id}`)
 }
