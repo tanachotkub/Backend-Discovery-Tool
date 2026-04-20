@@ -2,6 +2,7 @@ package services
 
 import (
 	"backend-discovery/models"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -10,10 +11,13 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// เพิ่ม struct สำหรับ Dependency Injection
-type ScannerService struct{}
+type ScannerService struct {
+	DB *gorm.DB // inject จาก main
+}
 
 func (s ScannerService) ValidateURL(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
@@ -157,8 +161,8 @@ func (s ScannerService) DNSLookup(domain string) []string {
 	return found
 }
 
-// Scan คือ method หลัก เรียกใช้จาก Handler
-func (s ScannerService) Scan(targetURL string) models.ScanResult {
+// Scan — เพิ่มการบันทึก history
+func (s ScannerService) Scan(targetURL string, ipAddress string) models.ScanResult {
 	start := time.Now()
 
 	if err := s.ValidateURL(targetURL); err != nil {
@@ -181,7 +185,7 @@ func (s ScannerService) Scan(targetURL string) models.ScanResult {
 		}
 	}
 
-	return models.ScanResult{
+	result := models.ScanResult{
 		Status:         "success",
 		URL:            targetURL,
 		FoundEndpoints: s.ScanEndpoints(html),
@@ -189,4 +193,21 @@ func (s ScannerService) Scan(targetURL string) models.ScanResult {
 		DNSResults:     s.DNSLookup(domain),
 		ScanDuration:   fmt.Sprintf("%.2fs", time.Since(start).Seconds()),
 	}
+
+	// บันทึก history ลง DB (ถ้ามี DB)
+	if s.DB != nil {
+		resultJSON, _ := json.Marshal(result)
+		history := models.ScanHistory{
+			URL:             targetURL,
+			Status:          result.Status,
+			FoundEndpoints:  len(result.FoundEndpoints),
+			DNSResultsCount: len(result.DNSResults),
+			ScanDuration:    result.ScanDuration,
+			ResultJSON:      string(resultJSON),
+			IPAddress:       ipAddress,
+		}
+		s.DB.Create(&history)
+	}
+
+	return result
 }

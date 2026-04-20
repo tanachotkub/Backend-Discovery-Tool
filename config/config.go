@@ -8,9 +8,11 @@ import (
 )
 
 type Config struct {
-	Port    string
-	AppName string
-	AppEnv  string
+	Port     string
+	AppName  string
+	AppEnv   string
+	DBDsn    string
+	RedisURL string
 }
 
 func Load() *Config {
@@ -19,9 +21,11 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:    getEnv("PORT", "8080"),
-		AppName: getEnv("APP_NAME", "Backend Discovery Tool"),
-		AppEnv:  getEnv("APP_ENV", "development"),
+		Port:     getEnv("PORT", "8080"),
+		AppName:  getEnv("APP_NAME", "Backend Discovery Tool"),
+		AppEnv:   getEnv("APP_ENV", "development"),
+		DBDsn:    getEnv("DB_DSN", ""),
+		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
 	}
 }
 

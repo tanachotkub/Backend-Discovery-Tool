@@ -12,7 +12,6 @@ type ScanHandler struct {
 	Service services.ScannerService
 }
 
-// Health handles GET /api/health
 func (h *ScanHandler) Health(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "ok",
@@ -21,7 +20,6 @@ func (h *ScanHandler) Health(c *fiber.Ctx) error {
 	})
 }
 
-// Scan handles POST /api/scan
 func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 	var req models.ScanRequest
 
@@ -40,12 +38,12 @@ func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 		})
 	}
 
-	// Auto-add https:// ถ้าไม่มี scheme
 	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
 		req.URL = "https://" + req.URL
 	}
 
-	result := h.Service.Scan(req.URL)
+	// ส่ง IP เพื่อบันทึก history
+	result := h.Service.Scan(req.URL, c.IP())
 
 	statusCode := fiber.StatusOK
 	if result.Status == "error" {
