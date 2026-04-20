@@ -12,6 +12,7 @@ func SetupRoutes(
 	app *fiber.App,
 	scanHdl *handlers.ScanHandler,
 	historyHdl *handlers.HistoryHandler,
+	jobHdl *handlers.JobHandler,
 ) {
 	api := app.Group("/api")
 
@@ -24,7 +25,10 @@ func SetupRoutes(
 		api.Post("/scan", scanHdl.Scan)
 	}
 
-	// History routes
+	// Job status
+	api.Get("/jobs/:id", jobHdl.GetJob)
+
+	// History
 	scans := api.Group("/scans")
 	scans.Get("/", historyHdl.GetAll)
 	scans.Get("/:id", historyHdl.GetByID)

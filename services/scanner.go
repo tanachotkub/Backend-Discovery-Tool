@@ -2,7 +2,6 @@ package services
 
 import (
 	"backend-discovery/models"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -185,7 +184,8 @@ func (s ScannerService) Scan(targetURL string, ipAddress string) models.ScanResu
 		}
 	}
 
-	result := models.ScanResult{
+	// result := models.ScanResult{
+	return models.ScanResult{
 		Status:         "success",
 		URL:            targetURL,
 		FoundEndpoints: s.ScanEndpoints(html),
@@ -194,20 +194,20 @@ func (s ScannerService) Scan(targetURL string, ipAddress string) models.ScanResu
 		ScanDuration:   fmt.Sprintf("%.2fs", time.Since(start).Seconds()),
 	}
 
-	// บันทึก history ลง DB (ถ้ามี DB)
-	if s.DB != nil {
-		resultJSON, _ := json.Marshal(result)
-		history := models.ScanHistory{
-			URL:             targetURL,
-			Status:          result.Status,
-			FoundEndpoints:  len(result.FoundEndpoints),
-			DNSResultsCount: len(result.DNSResults),
-			ScanDuration:    result.ScanDuration,
-			ResultJSON:      string(resultJSON),
-			IPAddress:       ipAddress,
-		}
-		s.DB.Create(&history)
-	}
+	// // บันทึก history ลง DB (ถ้ามี DB)
+	// if s.DB != nil {
+	// 	resultJSON, _ := json.Marshal(result)
+	// 	history := models.ScanHistory{
+	// 		URL:             targetURL,
+	// 		Status:          result.Status,
+	// 		FoundEndpoints:  len(result.FoundEndpoints),
+	// 		DNSResultsCount: len(result.DNSResults),
+	// 		ScanDuration:    result.ScanDuration,
+	// 		ResultJSON:      string(resultJSON),
+	// 		IPAddress:       ipAddress,
+	// 	}
+	// 	s.DB.Create(&history)
+	// }
 
-	return result
+	// return result
 }

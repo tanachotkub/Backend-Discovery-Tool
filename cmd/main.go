@@ -8,7 +8,11 @@ import (
 	"backend-discovery/models"
 	"backend-discovery/routes"
 	"backend-discovery/services"
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -34,17 +38,32 @@ func main() {
 
 	// Connect Redis
 	if err := database.ConnectRedis(cfg.RedisURL); err != nil {
-		log.Printf("⚠️  Redis warning: %v (rate limiting disabled)", err)
+		log.Fatalf("Redis required for Phase 3: %v", err)
+	}
+	log.Println("✅ Redis Connected")
+
+	// เพิ่มหลัง Redis connect
+	log.Println("⏳ Installing Playwright browsers...")
+	if err := services.InstallBrowser(); err != nil {
+		log.Printf("⚠️  Playwright install warning: %v", err)
 	} else {
-		log.Println("✅ Redis Connected")
+		log.Println("✅ Playwright ready")
 	}
 
-	// Dependency Injection
-	scanSrv := services.ScannerService{DB: db}
-	historySrv := services.HistoryService{DB: db}
+	// Worker Pool
+	workerPool := services.NewWorkerPool(db, database.RedisClient, cfg.WorkerCount)
 
-	scanHdl := handlers.ScanHandler{Service: scanSrv}
-	historyHdl := handlers.HistoryHandler{Service: historySrv}
+	// Start workers พร้อม graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	workerPool.Start(ctx)
+
+	// Dependency Injection
+	scanHdl := &handlers.ScanHandler{WorkerPool: workerPool}
+	jobHdl := &handlers.JobHandler{WorkerPool: workerPool}
+	historyHdl := &handlers.HistoryHandler{
+		Service: services.HistoryService{DB: db},
+	}
 
 	// Setup Fiber
 	app := fiber.New(fiber.Config{
@@ -69,8 +88,18 @@ func main() {
 	app.Use(helmet.New())
 	middlewares.SetupCORS(app)
 
-	routes.SetupRoutes(app, &scanHdl, &historyHdl)
+	routes.SetupRoutes(app, scanHdl, historyHdl, jobHdl)
 
-	log.Printf("🚀 Server running on :%s", cfg.Port)
+	// Graceful shutdown
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		log.Println("🛑 Shutting down...")
+		cancel() // หยุด workers
+		app.Shutdown()
+	}()
+
+	log.Printf("🚀 Server running on :%s (workers: %d)", cfg.Port, cfg.WorkerCount)
 	log.Fatal(app.Listen(":" + cfg.Port))
 }

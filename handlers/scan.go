@@ -9,17 +9,18 @@ import (
 )
 
 type ScanHandler struct {
-	Service services.ScannerService
+	WorkerPool *services.WorkerPool
 }
 
 func (h *ScanHandler) Health(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "ok",
 		"service": "Backend Discovery Tool",
-		"version": "1.0.0",
+		"version": "2.0.0",
 	})
 }
 
+// Scan รับ request แล้ว enqueue job → คืน job_id ทันที
 func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 	var req models.ScanRequest
 
@@ -42,13 +43,19 @@ func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 		req.URL = "https://" + req.URL
 	}
 
-	// ส่ง IP เพื่อบันทึก history
-	result := h.Service.Scan(req.URL, c.IP())
-
-	statusCode := fiber.StatusOK
-	if result.Status == "error" {
-		statusCode = fiber.StatusBadRequest
+	// Enqueue job แทนการ scan ตรงๆ
+	job, err := h.WorkerPool.EnqueueJob(req.URL, req.DeepScan, c.IP())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "failed to create scan job",
+		})
 	}
 
-	return c.Status(statusCode).JSON(result)
+	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+		"status":    "accepted",
+		"job_id":    job.ID,
+		"message":   "scan job created, use GET /api/jobs/:id to check status",
+		"deep_scan": req.DeepScan,
+	})
 }

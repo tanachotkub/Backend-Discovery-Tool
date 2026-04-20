@@ -3,16 +3,18 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port     string
-	AppName  string
-	AppEnv   string
-	DBDsn    string
-	RedisURL string
+	Port        string
+	AppName     string
+	AppEnv      string
+	DBDsn       string
+	RedisURL    string
+	WorkerCount int // จำนวน worker goroutine
 }
 
 func Load() *Config {
@@ -20,12 +22,15 @@ func Load() *Config {
 		log.Println("Warning: .env file not found, using system environment")
 	}
 
+	workerCount, _ := strconv.Atoi(getEnv("WORKER_COUNT", "3"))
+
 	return &Config{
-		Port:     getEnv("PORT", "8080"),
-		AppName:  getEnv("APP_NAME", "Backend Discovery Tool"),
-		AppEnv:   getEnv("APP_ENV", "development"),
-		DBDsn:    getEnv("DB_DSN", ""),
-		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
+		Port:        getEnv("PORT", "8080"),
+		AppName:     getEnv("APP_NAME", "Backend Discovery Tool"),
+		AppEnv:      getEnv("APP_ENV", "development"),
+		DBDsn:       getEnv("DB_DSN", ""),
+		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
+		WorkerCount: workerCount,
 	}
 }
 
