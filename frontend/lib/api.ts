@@ -1,0 +1,44 @@
+import axios from 'axios'
+import { Job, HistoryResponse } from '@/types'
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  headers: { 'Content-Type': 'application/json' },
+})
+
+export async function startScan(url: string, deepScan: boolean): Promise<{ job_id: string; status: string }> {
+  const res = await api.post('/api/scan', { url, deep_scan: deepScan })
+  return res.data
+}
+
+export async function getJob(jobId: string): Promise<Job> {
+  const res = await api.get(`/api/jobs/${jobId}`)
+  return res.data.data
+}
+
+export async function getHistory(page = 1, perPage = 10, status = ''): Promise<HistoryResponse> {
+  const res = await api.get('/api/scans', { params: { page, per_page: perPage, status } })
+  
+  // Backend ส่งมาแบบนี้
+  // {
+  //   status: 'success',
+  //   data: [...],        ← array ตรงๆ
+  //   total: 10,
+  //   page: 1,
+  //   per_page: 10,
+  //   total_pages: 2
+  // }
+  
+  const { data, total, page: p, per_page, total_pages } = res.data
+  
+  return {
+    data,
+    total,
+    page: p,
+    per_page,
+    total_pages,
+  }
+}
+export async function deleteHistory(id: number): Promise<void> {
+  await api.delete(`/api/scans/${id}`)
+}

@@ -24,16 +24,16 @@ type WorkerPool struct {
 	RedisClient *redis.Client
 	WorkerCount int
 	scanner     ScannerService
-	browser     BrowserScanner
+	browser     BrowserScanner // รับมาจาก main แทนสร้างเอง
 }
 
-func NewWorkerPool(db *gorm.DB, rdb *redis.Client, workerCount int) *WorkerPool {
+func NewWorkerPool(db *gorm.DB, rdb *redis.Client, workerCount int, browser BrowserScanner) *WorkerPool {
 	return &WorkerPool{
 		DB:          db,
 		RedisClient: rdb,
 		WorkerCount: workerCount,
 		scanner:     ScannerService{DB: db},
-		browser:     BrowserScanner{},
+		browser:     browser, // inject เข้ามา
 	}
 }
 

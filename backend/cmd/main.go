@@ -42,16 +42,16 @@ func main() {
 	}
 	log.Println("✅ Redis Connected")
 
-	// เพิ่มหลัง Redis connect
-	log.Println("⏳ Installing Playwright browsers...")
-	if err := services.InstallBrowser(); err != nil {
-		log.Printf("⚠️  Playwright install warning: %v", err)
+	// แทนที่บรรทัด Playwright install เดิม
+	browserScanner := services.NewBrowserScanner(cfg.EdgeDriverPath, cfg.EdgeDriverPort)
+	if err := services.InstallBrowser(browserScanner.Config); err != nil {
+		log.Printf("⚠️  Browser warning: %v", err)
 	} else {
-		log.Println("✅ Playwright ready")
+		log.Println("✅ EdgeDriver ready")
 	}
 
-	// Worker Pool
-	workerPool := services.NewWorkerPool(db, database.RedisClient, cfg.WorkerCount)
+	// แก้ NewWorkerPool ให้รับ browserScanner ด้วย
+	workerPool := services.NewWorkerPool(db, database.RedisClient, cfg.WorkerCount, browserScanner)
 
 	// Start workers พร้อม graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
