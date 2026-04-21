@@ -11,31 +11,33 @@ const navItems = [
 
 export default function Navbar() {
   const path = usePathname()
+
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-bg/80 backdrop-blur-xl">
+    <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-b border-blue-100/80 shadow-sm">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/30 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-            <Shield className="w-4 h-4 text-accent" />
+          <div className="w-9 h-9 rounded-xl bg-primary-600 flex items-center justify-center shadow-soft group-hover:bg-primary-700 transition-colors">
+            <Shield className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
-            <span className="font-semibold text-white text-sm">Backend Discovery</span>
-            <span className="text-accent text-xs ml-1.5 opacity-60">v3.0</span>
+            <span className="font-semibold text-ink text-sm">Backend Discovery</span>
+            <span className="text-primary-400 text-xs ml-1.5">v3.0</span>
           </div>
         </Link>
 
-        {/* Nav links */}
+        {/* Nav */}
         <div className="flex items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               className={clsx(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 path === href
-                  ? 'bg-accent/10 text-accent border border-accent/20'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary-600 text-white shadow-soft'
+                  : 'text-ink-muted hover:text-ink hover:bg-primary-50'
               )}
             >
               <Icon className="w-4 h-4" />
@@ -44,10 +46,10 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-2 text-xs text-white/30">
-          <Activity className="w-3.5 h-3.5 text-success animate-pulse-slow" />
-          <span>ระบบออนไลน์</span>
+        {/* Status */}
+        <div className="flex items-center gap-2 text-xs text-ink-subtle">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow" />
+          ระบบออนไลน์
         </div>
       </div>
     </nav>

@@ -5,45 +5,40 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['var(--font-display)'],
-        body: ['var(--font-body)'],
+        body: ['var(--font-body)', 'sans-serif'],
       },
       colors: {
-        bg: {
-          DEFAULT: '#0a0f1e',
-          card: '#0f1729',
-          elevated: '#162035',
+        primary: {
+          50:  '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
         },
-        accent: {
-          DEFAULT: '#00d4ff',
-          dim: '#00d4ff33',
-          hover: '#00eeff',
+        surface: {
+          DEFAULT: '#f0f4ff',
+          card:    '#ffffff',
+          elevated:'#f8faff',
         },
-        success: '#00ff88',
-        warning: '#ffaa00',
-        danger: '#ff4466',
-        muted: '#4a5568',
-        subtle: '#1e2d4a',
+        ink: {
+          DEFAULT: '#1e293b',
+          muted:   '#64748b',
+          subtle:  '#94a3b8',
+          faint:   '#cbd5e1',
+        },
+      },
+      boxShadow: {
+        'soft':   '0 4px 24px rgba(59,130,246,0.10)',
+        'medium': '0 8px 32px rgba(59,130,246,0.15)',
+        'card':   '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(59,130,246,0.08)',
       },
       animation: {
-        'fade-up': 'fadeUp 0.5s ease forwards',
+        'fade-up':    'fadeUp 0.5s ease forwards',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
-        'scan-line': 'scanLine 2s linear infinite',
-        'glow': 'glow 2s ease-in-out infinite',
-      },
-      keyframes: {
-        fadeUp: {
-          from: { opacity: '0', transform: 'translateY(16px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        scanLine: {
-          '0%': { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(400%)' },
-        },
-        glow: {
-          '0%, 100%': { boxShadow: '0 0 8px #00d4ff44' },
-          '50%': { boxShadow: '0 0 24px #00d4ff88' },
-        },
+        'scan-line':  'scanLine 1.8s linear infinite',
       },
     },
   },

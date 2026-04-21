@@ -46,15 +46,16 @@ export default function HistoryPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-6xl mx-auto px-6 pt-28 pb-16">
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-              <History className="w-5 h-5 text-accent" />
+            <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center shadow-soft">
+              <History className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">ประวัติการสแกน</h1>
-              <p className="text-white/40 text-sm">
+              <h1 className="text-xl font-bold text-ink">ประวัติการสแกน</h1>
+              <p className="text-ink-muted text-sm">
                 {data ? `พบ ${data.total} รายการ` : 'กำลังโหลด...'}
               </p>
             </div>
@@ -62,38 +63,43 @@ export default function HistoryPage() {
 
           {/* Filter */}
           <div className="flex items-center gap-2">
-            {['', 'success', 'error'].map(s => (
+            {[
+              { val: '', label: 'ทั้งหมด' },
+              { val: 'success', label: 'สำเร็จ' },
+              { val: 'error', label: 'ล้มเหลว' },
+            ].map(({ val, label }) => (
               <button
-                key={s}
-                onClick={() => { setStatusFilter(s); setPage(1) }}
+                key={val}
+                onClick={() => { setStatusFilter(val); setPage(1) }}
                 className={clsx(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                  statusFilter === s
-                    ? 'bg-accent/15 text-accent border border-accent/25'
-                    : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'
+                  'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all border',
+                  statusFilter === val
+                    ? 'bg-primary-600 text-white border-primary-600 shadow-soft'
+                    : 'text-ink-muted hover:text-ink bg-white border-ink-faint hover:border-primary-300'
                 )}
               >
-                {s === '' ? 'ทั้งหมด' : s === 'success' ? 'สำเร็จ' : 'ล้มเหลว'}
+                {label}
               </button>
             ))}
           </div>
         </div>
 
         {/* Table */}
-        <div className="card-glow bg-bg-card rounded-2xl border border-white/5 overflow-hidden">
+        <div className="card rounded-2xl overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
             </div>
           ) : !data?.data?.length ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Search className="w-10 h-10 text-white/10 mb-4" />
-              <p className="text-white/30 text-sm">ยังไม่มีประวัติการสแกน</p>
+              <Search className="w-10 h-10 text-ink-faint mb-4" />
+              <p className="text-ink-muted text-sm font-medium">ยังไม่มีประวัติการสแกน</p>
+              <p className="text-ink-subtle text-xs mt-1">เริ่มสแกนเว็บไซต์แรกของคุณได้เลย</p>
             </div>
           ) : (
             <>
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-white/5 text-xs text-white/30 font-medium uppercase tracking-wider">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3.5 bg-surface-elevated border-b border-ink-faint/50 text-xs text-ink-muted font-semibold uppercase tracking-wider">
                 <div className="col-span-4">URL</div>
                 <div className="col-span-2 text-center">สถานะ</div>
                 <div className="col-span-2 text-center">Endpoints</div>
@@ -103,7 +109,7 @@ export default function HistoryPage() {
               </div>
 
               {/* Rows */}
-              <div className="divide-y divide-white/4">
+              <div className="divide-y divide-ink-faint/30">
                 {data.data.map((item) => (
                   <HistoryRow
                     key={item.id}
@@ -116,22 +122,22 @@ export default function HistoryPage() {
 
               {/* Pagination */}
               {data.total_pages > 1 && (
-                <div className="flex items-center justify-between px-5 py-4 border-t border-white/5">
-                  <p className="text-white/30 text-xs">
+                <div className="flex items-center justify-between px-6 py-4 bg-surface-elevated border-t border-ink-faint/50">
+                  <p className="text-ink-muted text-xs">
                     หน้า {data.page} จาก {data.total_pages}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white disabled:opacity-30 transition-all"
+                      className="p-1.5 rounded-lg hover:bg-primary-50 text-ink-muted hover:text-primary-600 disabled:opacity-30 transition-all border border-transparent hover:border-primary-200"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setPage(p => Math.min(data.total_pages, p + 1))}
                       disabled={page === data.total_pages}
-                      className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white disabled:opacity-30 transition-all"
+                      className="p-1.5 rounded-lg hover:bg-primary-50 text-ink-muted hover:text-primary-600 disabled:opacity-30 transition-all border border-transparent hover:border-primary-200"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -152,14 +158,14 @@ function HistoryRow({ item, onDelete, deleting }: {
   deleting: boolean
 }) {
   const router = useRouter()
-  const totalEndpoints = item.found_endpoints_count + item.js_endpoints_count + item.network_calls_count
+  const total = item.found_endpoints_count + item.js_endpoints_count + item.network_calls_count
 
   return (
-    <div className="grid grid-cols-12 gap-4 px-5 py-4 hover:bg-white/2 transition-colors group items-center">
+    <div className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-primary-50/30 transition-colors group items-center">
       {/* URL */}
       <div className="col-span-4 flex items-center gap-2.5 min-w-0">
-        <Globe className="w-3.5 h-3.5 text-white/20 shrink-0" />
-        <span className="text-white/70 text-xs font-mono truncate">{item.url}</span>
+        <Globe className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
+        <span className="text-ink text-xs font-mono truncate">{item.url}</span>
       </div>
 
       {/* Status */}
@@ -171,20 +177,15 @@ function HistoryRow({ item, onDelete, deleting }: {
         </span>
       </div>
 
-      {/* Endpoints count */}
+      {/* Endpoints */}
       <div className="col-span-2 text-center">
-        <span className="text-accent font-bold text-sm">{totalEndpoints}</span>
-        <span className="text-white/25 text-xs ml-1">รายการ</span>
+        <span className="text-primary-600 font-bold text-sm">{total}</span>
+        <span className="text-ink-subtle text-xs ml-1">รายการ</span>
       </div>
 
       {/* Mode */}
       <div className="col-span-1 flex justify-center">
-        <span className={clsx(
-          'badge text-xs',
-          item.scan_mode === 'deep'
-            ? 'badge-processing'
-            : 'bg-white/5 text-white/35 border border-white/10'
-        )}>
+        <span className={clsx('badge text-xs', item.scan_mode === 'deep' ? 'badge-deep' : 'badge-basic')}>
           {item.scan_mode === 'deep' ? <><Zap className="w-3 h-3" />Deep</> : 'Basic'}
         </span>
       </div>
@@ -192,30 +193,27 @@ function HistoryRow({ item, onDelete, deleting }: {
       {/* Duration */}
       <div className="col-span-1 text-center">
         <div className="flex items-center justify-center gap-1">
-          <Clock className="w-3 h-3 text-white/20" />
-          <span className="text-white/40 text-xs">{item.scan_duration}</span>
+          <Clock className="w-3 h-3 text-ink-subtle" />
+          <span className="text-ink-muted text-xs">{item.scan_duration}</span>
         </div>
       </div>
 
       {/* Actions */}
       <div className="col-span-2 flex justify-center items-center gap-2">
-        {/* ✅ ปุ่มดูรายละเอียด */}
         <button
           onClick={() => router.push(`/history/${item.id}`)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/8 border border-accent/15 text-accent/70 hover:text-accent hover:bg-accent/15 text-xs transition-all"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary-50 border border-primary-200 text-primary-600 hover:bg-primary-100 text-xs font-medium transition-all"
         >
           <Eye className="w-3 h-3" />
-          ดูรายละเอียด
+          รายละเอียด
         </button>
-
-        {/* ปุ่มลบ */}
         <button
           onClick={() => onDelete(item.id)}
           disabled={deleting}
-          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-danger/10 text-white/20 hover:text-danger transition-all disabled:opacity-30"
+          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-ink-subtle hover:text-red-500 border border-transparent hover:border-red-200 transition-all disabled:opacity-30"
         >
           {deleting
-            ? <div className="w-3.5 h-3.5 border border-danger/30 border-t-danger rounded-full animate-spin" />
+            ? <div className="w-3.5 h-3.5 border border-red-300 border-t-red-500 rounded-full animate-spin" />
             : <Trash2 className="w-3.5 h-3.5" />}
         </button>
       </div>
