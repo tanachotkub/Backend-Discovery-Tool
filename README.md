@@ -1,0 +1,333 @@
+# 🕵️ Backend Discovery Tool
+
+ระบบ Reconnaissance Tool สำหรับวิเคราะห์เว็บไซต์เพื่อค้นหา API Endpoint, Backend URL และ Technology Stack โดยอัตโนมัติ
+
+---
+
+## ✨ Features
+
+- 🔍 **HTML Scanning** — วิเคราะห์ HTML ด้วย Regex เพื่อหา API endpoint
+- 🌐 **DNS Enumeration** — ลอง resolve subdomain เช่น `api.`, `backend.`, `gateway.`
+- 📡 **Header Analysis** — วิเคราะห์ Response Headers เพื่อดู Technology Stack
+- ⚡ **Deep Scan** — เปิด Browser จริงด้วย Selenium เพื่อดักจับ Network Calls และ JS Endpoints
+- 🔄 **Async Worker Queue** — ใช้ Redis Queue + Goroutine Worker Pool รองรับ concurrent scan
+- 📝 **Scan History** — บันทึกผลลัพธ์ลง PostgreSQL พร้อม Pagination
+- 🛡️ **SSRF Protection** — ป้องกัน private IP, localhost, AWS metadata endpoint
+- ⏱️ **Rate Limiting** — จำกัด 5 requests/minute/IP ผ่าน Redis
+
+---
+
+## 🧱 Tech Stack
+
+### Backend
+| Technology | เหตุผลที่เลือก |
+|------------|---------------|
+| Go + Fiber | เร็ว, lightweight, เหมาะกับ concurrent workload |
+| PostgreSQL + GORM | เก็บ scan history พร้อม soft delete |
+| Redis | Rate limiting + Job queue state |
+| Selenium (Edge) | Deep scan ผ่าน bot protection ได้ดีกว่า Playwright |
+
+### Frontend
+| Technology | เหตุผลที่เลือก |
+|------------|---------------|
+| Next.js 14 | App Router, Server Components |
+| Tailwind CSS | Utility-first, dark theme |
+| Axios | HTTP client พร้อม interceptor |
+| TypeScript | Type safety ครบทุก layer |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend (Next.js)             │
+│   หน้าสแกน │ หน้าประวัติ │ หน้ารายละเอียด      │
+└─────────────────┬───────────────────────────────┘
+                  │ HTTP Request
+┌─────────────────▼───────────────────────────────┐
+│                Backend (Go + Fiber)              │
+│                                                  │
+│  POST /api/scan  →  Rate Limiter (Redis)         │
+│                  →  Enqueue Job                  │
+│                                                  │
+│  GET /api/jobs/:id  →  ดึง Job Status            │
+│  GET /api/scans     →  Scan History              │
+└──────────┬──────────────────┬───────────────────┘
+           │                  │
+┌──────────▼──────┐  ┌────────▼────────┐
+│  Worker Pool    │  │   PostgreSQL    │
+│  (3 goroutines) │  │  scan_histories │
+│                 │  └─────────────────┘
+│  Basic Scan:    │
+│  ├─ Fetch HTML  │  ┌─────────────────┐
+│  ├─ Regex       │  │     Redis       │
+│  ├─ DNS Lookup  │  │  ├─ Job Queue   │
+│  └─ Headers     │  │  └─ Rate Limit  │
+│                 │  └─────────────────┘
+│  Deep Scan:     │
+│  ├─ Basic Scan  │  ┌─────────────────┐
+│  ├─ Selenium    │  │  Edge Browser   │
+│  ├─ Network     │  │  (Headless)     │
+│  └─ JS Files    │  └─────────────────┘
+└─────────────────┘
+```
+
+---
+
+## 📁 Project Structure
+
+```
+backend-discovery/
+├── backend/                    # Go API Server
+│   ├── cmd/
+│   │   └── main.go             # Entry point
+│   ├── config/
+│   │   └── config.go           # Load .env config
+│   ├── database/
+│   │   ├── postgres.go         # PostgreSQL connection
+│   │   └── redis.go            # Redis connection
+│   ├── handlers/
+│   │   ├── scan.go             # POST /api/scan
+│   │   ├── job.go              # GET /api/jobs/:id
+│   │   └── history.go          # GET/DELETE /api/scans
+│   ├── middlewares/
+│   │   ├── cors.go             # CORS
+│   │   └── rate_limiter.go     # Redis rate limiting
+│   ├── models/
+│   │   ├── scan.go             # Request/Response structs
+│   │   ├── scan_history.go     # GORM model
+│   │   └── job.go              # Job struct
+│   ├── routes/
+│   │   └── routes.go           # Route registration
+│   ├── services/
+│   │   ├── scanner.go          # Core scan logic
+│   │   ├── browser.go          # Selenium deep scan
+│   │   ├── history.go          # History service
+│   │   └── worker.go           # Redis job queue + worker pool
+│   ├── docs/
+│   │   └── api.md              # API documentation
+│   ├── .env.example
+│   ├── .gitignore
+│   └── go.mod
+│
+└── frontend/                   # Next.js App
+    ├── app/
+    │   ├── layout.tsx           # Root layout + Thai font
+    │   ├── globals.css          # Dark theme styles
+    │   ├── page.tsx             # หน้าสแกนหลัก
+    │   └── history/
+    │       ├── page.tsx         # หน้าประวัติ
+    │       └── [id]/
+    │           └── page.tsx     # หน้ารายละเอียด
+    ├── components/
+    │   ├── layout/
+    │   │   └── Navbar.tsx
+    │   └── ui/
+    │       ├── ScanForm.tsx     # Form + Basic/Deep toggle
+    │       └── JobStatus.tsx    # Poll job + แสดงผล
+    ├── lib/
+    │   └── api.ts               # Axios API wrapper
+    ├── types/
+    │   └── index.ts             # TypeScript types
+    ├── .env.local.example
+    ├── .gitignore
+    └── package.json
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Go 1.22+
+- Node.js 18+
+- PostgreSQL
+- Redis
+- Microsoft Edge + EdgeDriver
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/yourusername/backend-discovery.git
+cd backend-discovery
+```
+
+### 2. Setup Backend
+
+```bash
+cd backend
+
+# Copy และแก้ไข .env
+cp .env.example .env
+
+# ติดตั้ง dependencies
+go mod tidy
+
+# รัน server
+go run cmd/main.go
+```
+
+### 3. Setup Frontend
+
+```bash
+cd frontend
+
+# Copy และแก้ไข .env.local
+cp .env.local.example .env.local
+
+# ติดตั้ง dependencies
+npm install
+
+# รัน development server
+npm run dev
+```
+
+### 4. เปิดเว็บ
+
+```
+Frontend → http://localhost:3000
+Backend  → http://localhost:8080
+```
+
+---
+
+## ⚙️ Environment Variables
+
+### Backend `.env`
+
+```env
+PORT=8080
+APP_NAME=Backend Discovery Tool
+APP_ENV=development
+
+# PostgreSQL
+DB_DSN=host=localhost user=postgres password=yourpassword dbname=backend_discovery port=5432 sslmode=disable
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Worker
+WORKER_COUNT=3
+
+# Selenium Edge
+EDGE_DRIVER_PATH=C:\WebDriver\msedgedriver.exe
+EDGE_DRIVER_PORT=9515
+```
+
+### Frontend `.env.local`
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+---
+
+## 📡 API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Health check |
+| `POST` | `/api/scan` | สร้าง scan job |
+| `GET` | `/api/jobs/:id` | เช็ค job status + result |
+| `GET` | `/api/scans` | ดูประวัติทั้งหมด |
+| `GET` | `/api/scans/:id` | ดูประวัติรายการนั้น |
+| `DELETE` | `/api/scans/:id` | ลบประวัติ |
+
+### ตัวอย่าง Basic Scan
+
+```bash
+curl -X POST http://localhost:8080/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com", "deep_scan": false}'
+```
+
+```json
+{
+  "status": "accepted",
+  "job_id": "abc-123",
+  "message": "scan job created, use GET /api/jobs/:id to check status"
+}
+```
+
+### ตัวอย่าง Deep Scan
+
+```bash
+curl -X POST http://localhost:8080/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com", "deep_scan": true}'
+```
+
+### ตัวอย่าง Result
+
+```json
+{
+  "status": "success",
+  "url": "https://github.com",
+  "found_endpoints": [
+    "https://api.githubcopilot.com",
+    "https://api.github.com/_private/browser/stats"
+  ],
+  "headers": {
+    "server": "github.com"
+  },
+  "dns_results": [
+    "api.github.com → 20.205.243.168"
+  ],
+  "js_endpoints": [...],
+  "network_calls": [...],
+  "scan_duration": "0.90s",
+  "scan_mode": "deep"
+}
+```
+
+---
+
+## 🔐 Security
+
+| มาตรการ | รายละเอียด |
+|---------|-----------|
+| SSRF Protection | Block localhost, 127.0.0.1, private IP (10.x, 172.16.x, 192.168.x), AWS metadata (169.254.x) |
+| Rate Limiting | 5 requests/minute/IP ผ่าน Redis |
+| Response Size Limit | จำกัด 5MB ต่อ request |
+| Redirect Validation | ป้องกัน open redirect ไป internal network |
+| Request Timeout | 10 วินาที ต่อ request |
+| CORS | กำหนด allowed origins |
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **Phase 1** — Basic HTML Scan + DNS + Header Analysis
+- [x] **Phase 2** — Scan History (PostgreSQL) + Rate Limiting (Redis)
+- [x] **Phase 3** — Headless Browser (Selenium) + JS Scanning + Async Worker Queue
+- [x] **Frontend** — Next.js Dashboard (ภาษาไทย)
+- [ ] **Phase 4** — Docker + Cloud Deployment + Nginx
+- [ ] **Authenticated Scan** — ส่ง cookies เพื่อ scan หลัง login
+- [ ] **Export Report** — Export ผลลัพธ์เป็น PDF
+
+---
+
+## 🎓 สิ่งที่ได้เรียนรู้จากโปรเจคนี้
+
+| หัวข้อ | รายละเอียด |
+|--------|-----------|
+| HTTP Client | Fetch HTML, Headers, Redirect handling |
+| Regex | Pattern matching สำหรับ endpoint discovery |
+| Security | SSRF, Rate limiting, Input validation |
+| DNS | Subdomain enumeration ด้วย net.LookupHost |
+| Async Worker | Redis Queue + Goroutine Worker Pool |
+| Headless Browser | Selenium stealth mode, Performance API |
+| Database | GORM, PostgreSQL, Soft delete, Pagination |
+| Frontend | Next.js App Router, TypeScript, Tailwind |
+
+---
+
+## 📄 License
+
+MIT License — ใช้ได้อย่างอิสระ
+
+---
+
+> โปรเจคนี้สร้างขึ้นเพื่อการศึกษา การใช้งานควรเป็นไปตามกฎหมายและได้รับอนุญาตจากเจ้าของระบบเท่านั้น
