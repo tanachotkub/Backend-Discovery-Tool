@@ -35,7 +35,7 @@ export default function HomePage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 border border-primary-200 text-primary-700 text-xs font-medium mb-8">
             <Shield className="w-3.5 h-3.5" />
-            Reconnaissance Tool — Phase 3
+            Reconnaissance Tool
           </div>
 
           {/* Title */}
@@ -95,7 +95,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-ink-faint/50 py-8 px-6 text-center">
         <p className="text-ink-subtle text-xs">
-          Backend Discovery Tool v3.0 — ใช้เพื่อการศึกษาและได้รับอนุญาตเท่านั้น
+          Backend Discovery Tool v1.0 — ใช้เพื่อการศึกษาและได้รับอนุญาตเท่านั้น
         </p>
       </footer>
     </div>
