@@ -48,7 +48,7 @@ export default function HomePage() {
           {/* Description */}
           <p className="text-ink-muted text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
             วิเคราะห์เว็บไซต์เพื่อค้นหา API Endpoint, Backend URL
-            และ Technology Stack โดยอัตโนมัติ
+            และ Technology Stack
           </p>
 
           {/* Feature pills */}

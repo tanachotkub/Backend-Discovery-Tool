@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Env files
+.env
+.env.*
+
+# Binary
+backend
+*.exe
+
+# Test files
+*_test.go
+*.test
+
+# Docs
+docs/
+README.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,95 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bd_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-bduser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bdpassword}
+      POSTGRES_DB: ${DB_NAME:-backend_discovery}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bduser} -d ${DB_NAME:-backend_discovery}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bd_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bd_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bd_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bd_backend
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      APP_ENV: production
+      APP_NAME: Backend Discovery Tool
+      DB_DSN: host=postgres user=${DB_USER:-bduser} password=${DB_PASSWORD:-bdpassword} dbname=${DB_NAME:-backend_discovery} port=5432 sslmode=disable TimeZone=Asia/Bangkok
+      REDIS_URL: redis://redis:6379
+      WORKER_COUNT: ${WORKER_COUNT:-3}
+      EDGE_DRIVER_PATH: ${EDGE_DRIVER_PATH:-/usr/bin/msedgedriver}
+      EDGE_DRIVER_PORT: ${EDGE_DRIVER_PORT:-9515}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    networks:
+      - bd_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bd_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend    # ← เปลี่ยนจาก condition เป็น simple list
+    networks:
+      - bd_network
+
+volumes:
+  postgres_data:
+    name: bd_postgres_data
+  redis_data:
+    name: bd_redis_data
+
+networks:
+  bd_network:
+    name: bd_network
+    driver: bridge
