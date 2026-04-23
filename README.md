@@ -9,11 +9,12 @@
 - 🔍 **HTML Scanning** — วิเคราะห์ HTML ด้วย Regex เพื่อหา API endpoint
 - 🌐 **DNS Enumeration** — ลอง resolve subdomain เช่น `api.`, `backend.`, `gateway.`
 - 📡 **Header Analysis** — วิเคราะห์ Response Headers เพื่อดู Technology Stack
-- ⚡ **Deep Scan** — เปิด Browser จริงด้วย Selenium เพื่อดักจับ Network Calls และ JS Endpoints
+- ⚡ **Deep Scan** — เปิด Browser จริงด้วย Selenium (Edge) เพื่อดักจับ Network Calls และ JS Endpoints
 - 🔄 **Async Worker Queue** — ใช้ Redis Queue + Goroutine Worker Pool รองรับ concurrent scan
 - 📝 **Scan History** — บันทึกผลลัพธ์ลง PostgreSQL พร้อม Pagination
 - 🛡️ **SSRF Protection** — ป้องกัน private IP, localhost, AWS metadata endpoint
 - ⏱️ **Rate Limiting** — จำกัด 5 requests/minute/IP ผ่าน Redis
+- 🐳 **Docker Support** — รัน full stack ด้วย docker compose คำสั่งเดียว
 
 ---
 
@@ -31,9 +32,16 @@
 | Technology | เหตุผลที่เลือก |
 |------------|---------------|
 | Next.js 14 | App Router, Server Components |
-| Tailwind CSS | Utility-first, dark theme |
+| Tailwind CSS | Utility-first, light theme |
 | Axios | HTTP client พร้อม interceptor |
 | TypeScript | Type safety ครบทุก layer |
+| Prompt Font | รองรับภาษาไทยสวยงาม |
+
+### DevOps
+| Technology | เหตุผลที่เลือก |
+|------------|---------------|
+| Docker | containerize ทุก service |
+| Docker Compose | orchestrate full stack |
 
 ---
 
@@ -107,32 +115,42 @@ backend-discovery/
 │   │   └── worker.go           # Redis job queue + worker pool
 │   ├── docs/
 │   │   └── api.md              # API documentation
+│   ├── Dockerfile
+│   ├── .dockerignore
 │   ├── .env.example
 │   ├── .gitignore
 │   └── go.mod
 │
-└── frontend/                   # Next.js App
-    ├── app/
-    │   ├── layout.tsx           # Root layout + Thai font
-    │   ├── globals.css          # Dark theme styles
-    │   ├── page.tsx             # หน้าสแกนหลัก
-    │   └── history/
-    │       ├── page.tsx         # หน้าประวัติ
-    │       └── [id]/
-    │           └── page.tsx     # หน้ารายละเอียด
-    ├── components/
-    │   ├── layout/
-    │   │   └── Navbar.tsx
-    │   └── ui/
-    │       ├── ScanForm.tsx     # Form + Basic/Deep toggle
-    │       └── JobStatus.tsx    # Poll job + แสดงผล
-    ├── lib/
-    │   └── api.ts               # Axios API wrapper
-    ├── types/
-    │   └── index.ts             # TypeScript types
-    ├── .env.local.example
-    ├── .gitignore
-    └── package.json
+├── frontend/                   # Next.js App
+│   ├── app/
+│   │   ├── layout.tsx           # Root layout + Prompt font
+│   │   ├── globals.css          # Light theme styles
+│   │   ├── page.tsx             # หน้าสแกนหลัก
+│   │   └── history/
+│   │       ├── page.tsx         # หน้าประวัติ + pagination
+│   │       └── [id]/
+│   │           └── page.tsx     # หน้ารายละเอียด
+│   ├── components/
+│   │   ├── layout/
+│   │   │   └── Navbar.tsx
+│   │   └── ui/
+│   │       ├── ScanForm.tsx     # Form + Basic/Deep toggle
+│   │       └── JobStatus.tsx    # Poll job + แสดงผล collapsible
+│   ├── lib/
+│   │   └── api.ts               # Axios API wrapper
+│   ├── types/
+│   │   └── index.ts             # TypeScript types
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── .env.local.example
+│   ├── .gitignore
+│   ├── next.config.js
+│   └── package.json
+│
+├── docker-compose.yml          # Full stack orchestration
+├── .env.example                # Environment variables template
+├── Makefile                    # Shortcut commands
+└── README.md
 ```
 
 ---
@@ -146,6 +164,11 @@ backend-discovery/
 - PostgreSQL
 - Redis
 - Microsoft Edge + EdgeDriver
+- Docker + Docker Desktop (สำหรับ Docker mode)
+
+---
+
+## วิธีที่ 1 — รันแบบ Manual (Development)
 
 ### 1. Clone Repository
 
@@ -158,29 +181,31 @@ cd backend-discovery
 
 ```bash
 cd backend
-
-# Copy และแก้ไข .env
 cp .env.example .env
+# แก้ไข .env ตามเครื่องของคุณ
 
-# ติดตั้ง dependencies
 go mod tidy
-
-# รัน server
 go run cmd/main.go
+```
+
+ถ้า start สำเร็จจะเห็น
+```
+✅ PostgreSQL Connected
+✅ Database migrated
+✅ Redis Connected
+✅ EdgeDriver ready
+🔧 Starting 3 workers...
+🚀 Server running on :8080
 ```
 
 ### 3. Setup Frontend
 
 ```bash
 cd frontend
-
-# Copy และแก้ไข .env.local
 cp .env.local.example .env.local
+# แก้ไข NEXT_PUBLIC_API_URL
 
-# ติดตั้ง dependencies
 npm install
-
-# รัน development server
 npm run dev
 ```
 
@@ -188,7 +213,44 @@ npm run dev
 
 ```
 Frontend → http://localhost:3000
-Backend  → http://localhost:8080
+Backend  → http://localhost:8080/api/health
+```
+
+---
+
+## วิธีที่ 2 — รันด้วย Docker (แนะนำสำหรับ Demo)
+
+### 1. Setup
+
+```bash
+# อยู่ที่ root folder
+cp .env.example .env
+# แก้ไข password ใน .env
+```
+
+### 2. Build และรัน
+
+```bash
+docker compose up --build
+```
+
+### 3. รันครั้งต่อไป
+
+```bash
+docker compose up -d
+```
+
+### 4. หยุดการทำงาน
+
+```bash
+docker compose down
+```
+
+### เปิดเว็บ
+
+```
+Frontend  → http://localhost:3000
+Backend   → http://localhost:8080/api/health
 ```
 
 ---
@@ -219,6 +281,17 @@ EDGE_DRIVER_PORT=9515
 ### Frontend `.env.local`
 
 ```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+### Root `.env` (สำหรับ Docker)
+
+```env
+DB_USER=postgres
+DB_PASSWORD=yourpassword
+DB_NAME=backend_discovery
+REDIS_PASSWORD=
+WORKER_COUNT=3
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
@@ -275,8 +348,8 @@ curl -X POST http://localhost:8080/api/scan \
   "dns_results": [
     "api.github.com → 20.205.243.168"
   ],
-  "js_endpoints": [...],
-  "network_calls": [...],
+  "js_endpoints": ["..."],
+  "network_calls": ["..."],
   "scan_duration": "0.90s",
   "scan_mode": "deep"
 }
@@ -294,6 +367,35 @@ curl -X POST http://localhost:8080/api/scan \
 | Redirect Validation | ป้องกัน open redirect ไป internal network |
 | Request Timeout | 10 วินาที ต่อ request |
 | CORS | กำหนด allowed origins |
+| Stealth Mode | Selenium ซ่อน automation flag ผ่าน bot protection |
+
+---
+
+## 🐳 Docker Commands
+
+```bash
+# รัน full stack
+docker compose up -d
+
+# หยุด (ข้อมูลยังอยู่)
+docker compose down
+
+# Build ใหม่ทั้งหมด
+docker compose build --no-cache
+
+# ดู logs
+docker compose logs -f
+
+# ดู logs เฉพาะ service
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# ดูสถานะ
+docker compose ps
+
+# ลบทุกอย่างรวม volume (ข้อมูลหาย!)
+docker compose down -v
+```
 
 ---
 
@@ -302,8 +404,9 @@ curl -X POST http://localhost:8080/api/scan \
 - [x] **Phase 1** — Basic HTML Scan + DNS + Header Analysis
 - [x] **Phase 2** — Scan History (PostgreSQL) + Rate Limiting (Redis)
 - [x] **Phase 3** — Headless Browser (Selenium) + JS Scanning + Async Worker Queue
-- [x] **Frontend** — Next.js Dashboard (ภาษาไทย)
-- [ ] **Phase 4** — Docker + Cloud Deployment + Nginx
+- [x] **Frontend** — Next.js Dashboard ภาษาไทย (Light theme + Prompt font)
+- [x] **Docker** — Dockerfile + docker-compose ครบทุก service
+- [ ] **Cloud Deploy** — Deploy บน Railway / VPS + Nginx
 - [ ] **Authenticated Scan** — ส่ง cookies เพื่อ scan หลัง login
 - [ ] **Export Report** — Export ผลลัพธ์เป็น PDF
 
@@ -320,7 +423,8 @@ curl -X POST http://localhost:8080/api/scan \
 | Async Worker | Redis Queue + Goroutine Worker Pool |
 | Headless Browser | Selenium stealth mode, Performance API |
 | Database | GORM, PostgreSQL, Soft delete, Pagination |
-| Frontend | Next.js App Router, TypeScript, Tailwind |
+| Frontend | Next.js App Router, TypeScript, Tailwind CSS |
+| Docker | Multi-stage build, docker-compose orchestration |
 
 ---
 
@@ -330,4 +434,4 @@ MIT License — ใช้ได้อย่างอิสระ
 
 ---
 
-> โปรเจคนี้สร้างขึ้นเพื่อการศึกษา การใช้งานควรเป็นไปตามกฎหมายและได้รับอนุญาตจากเจ้าของระบบเท่านั้น
+> ⚠️ โปรเจคนี้สร้างขึ้นเพื่อการศึกษา การใช้งานควรเป็นไปตามกฎหมายและได้รับอนุญาตจากเจ้าของระบบเท่านั้น
