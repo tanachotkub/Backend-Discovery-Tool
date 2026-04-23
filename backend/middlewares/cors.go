@@ -8,7 +8,7 @@ import (
 func SetupCORS(app *fiber.App) {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowMethods: "GET,POST,OPTIONS",
+		AllowMethods: "GET,POST,OPTIONS,DELETE,PUT",
 		AllowHeaders: "Content-Type, Authorization",
 	}))
 }
