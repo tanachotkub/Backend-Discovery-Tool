@@ -21,13 +21,23 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # Stage 2: Run
 FROM alpine:3.19
 
-# เพิ่ม curl เข้าไปด้วย
-RUN apk add --no-cache ca-certificates tzdata curl
+# เพิ่ม chromium
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    chromium \
+    chromium-chromedriver \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont
 
 ENV TZ=Asia/Bangkok
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_PATH=/usr/lib/chromium/
 
 WORKDIR /app
-
 COPY --from=builder /app/backend .
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
@@ -35,7 +45,6 @@ USER appuser
 
 EXPOSE 8080
 
-# แก้ healthcheck ใช้ curl แทน wget
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
     CMD curl -f http://localhost:8080/api/health || exit 1
 

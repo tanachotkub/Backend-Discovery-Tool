@@ -50,8 +50,7 @@ services:
       DB_DSN: host=postgres user=${DB_USER:-bduser} password=${DB_PASSWORD:-bdpassword} dbname=${DB_NAME:-backend_discovery} port=5432 sslmode=disable TimeZone=Asia/Bangkok
       REDIS_URL: redis://redis:6379
       WORKER_COUNT: ${WORKER_COUNT:-3}
-      EDGE_DRIVER_PATH: ${EDGE_DRIVER_PATH:-/usr/bin/msedgedriver}
-      EDGE_DRIVER_PORT: ${EDGE_DRIVER_PORT:-9515}
+      BROWSER_HEADLESS: "true"   # ← เพิ่ม
     ports:
       - "8080:8080"
     depends_on:

@@ -9,14 +9,13 @@ import (
 )
 
 type Config struct {
-	Port           string
-	AppName        string
-	AppEnv         string
-	DBDsn          string
-	RedisURL       string
-	WorkerCount    int
-	EdgeDriverPath string
-	EdgeDriverPort int
+	Port        string
+	AppName     string
+	AppEnv      string
+	DBDsn       string
+	RedisURL    string
+	WorkerCount int
+	Headless    bool // ← เปลี่ยนจาก EdgeDriverPath/Port
 }
 
 func Load() *Config {
@@ -25,17 +24,16 @@ func Load() *Config {
 	}
 
 	workerCount, _ := strconv.Atoi(getEnv("WORKER_COUNT", "3"))
-	edgeDriverPort, _ := strconv.Atoi(getEnv("EDGE_DRIVER_PORT", "9515"))
+	headless := getEnv("BROWSER_HEADLESS", "true") == "true"
 
 	return &Config{
-		Port:           getEnv("PORT", "8080"),
-		AppName:        getEnv("APP_NAME", "Backend Discovery Tool"),
-		AppEnv:         getEnv("APP_ENV", "development"),
-		DBDsn:          getEnv("DB_DSN", ""),
-		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379"),
-		WorkerCount:    workerCount,
-		EdgeDriverPath: getEnv("EDGE_DRIVER_PATH", "msedgedriver.exe"),
-		EdgeDriverPort: edgeDriverPort,
+		Port:        getEnv("PORT", "8080"),
+		AppName:     getEnv("APP_NAME", "Backend Discovery Tool"),
+		AppEnv:      getEnv("APP_ENV", "development"),
+		DBDsn:       getEnv("DB_DSN", ""),
+		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
+		WorkerCount: workerCount,
+		Headless:    headless,
 	}
 }
 

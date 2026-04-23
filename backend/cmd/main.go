@@ -43,7 +43,7 @@ func main() {
 	log.Println("✅ Redis Connected")
 
 	// แทนที่บรรทัด Playwright install เดิม
-	browserScanner := services.NewBrowserScanner(cfg.EdgeDriverPath, cfg.EdgeDriverPort)
+	browserScanner := services.NewBrowserScanner(cfg.Headless)
 	if err := services.InstallBrowser(browserScanner.Config); err != nil {
 		log.Printf("⚠️  Browser warning: %v", err)
 	} else {
