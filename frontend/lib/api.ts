@@ -49,3 +49,19 @@ export async function getHistoryById(id: number): Promise<ScanHistory> {
 export async function deleteHistory(id: number): Promise<void> {
   await api.delete(`/api/scans/${id}`)
 }
+
+export async function exportPDF(id: number): Promise<void> {
+  const res = await api.get(`/api/scans/${id}/export`, {
+    responseType: 'blob',  // ← รับเป็น binary
+  })
+
+  // สร้าง download link
+  const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `scan-report-${id}.pdf`)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}

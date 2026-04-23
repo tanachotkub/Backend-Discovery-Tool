@@ -2,12 +2,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import { getHistoryById } from '@/lib/api'
+import { getHistoryById, exportPDF } from '@/lib/api'
 import { ScanHistory, ScanResult } from '@/types'
 import {
   ArrowLeft, Globe, Server, Wifi, Code, Network,
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
-  Zap, Clock, Calendar, Loader2
+  Zap, Clock, Calendar, Loader2, Download
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -19,9 +19,21 @@ export default function HistoryDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<string[]>(['endpoints'])
+  const [exporting, setExporting] = useState(false)
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await exportPDF(Number(id))
+    } catch {
+      alert('ไม่สามารถ export PDF ได้')
+    } finally {
+      setExporting(false)
+    }
+  }
   const toggle = (key: string) =>
     setExpanded(p => p.includes(key) ? p.filter(k => k !== key) : [...p, key])
+
 
   useEffect(() => {
     const fetch = async () => {
@@ -37,6 +49,7 @@ export default function HistoryDetailPage() {
     }
     fetch()
   }, [id])
+
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -97,6 +110,26 @@ export default function HistoryDetailPage() {
               <span className={clsx('badge', item.scan_mode === 'deep' ? 'badge-deep' : 'badge-basic')}>
                 {item.scan_mode === 'deep' ? <><Zap className="w-3 h-3" />Deep Scan</> : '🔍 Basic Scan'}
               </span>
+
+              {/* ปุ่ม Export PDF */}
+              {/* ปุ่ม Export PDF */}
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary-200 bg-primary-50 text-primary-600 hover:bg-primary-100 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3 h-3" />
+                    Export PDF
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

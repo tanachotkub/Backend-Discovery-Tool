@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"backend-discovery/services"
+	"fmt"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HistoryHandler struct {
-	Service services.HistoryService
+	Service    services.HistoryService
+	PDFService services.PDFService // ← เพิ่ม
 }
 
 // GetAll handles GET /api/scans?page=1&per_page=10&status=success
@@ -92,4 +94,40 @@ func (h *HistoryHandler) Delete(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "deleted successfully",
 	})
+}
+
+// Export handles GET /api/scans/:id/export
+func (h *HistoryHandler) Export(c *fiber.Ctx) error {
+	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "invalid id",
+		})
+	}
+
+	history, err := h.Service.GetByID(uint(id))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "error",
+			"message": "history not found",
+		})
+	}
+
+	// Generate PDF
+	pdfBytes, err := h.PDFService.GenerateScanReport(history)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "failed to generate PDF",
+		})
+	}
+
+	// ตั้งชื่อไฟล์จาก URL และวันที่
+	filename := fmt.Sprintf("scan-report-%d.pdf", history.ID)
+
+	// ส่งไฟล์กลับ
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	return c.Send(pdfBytes)
 }

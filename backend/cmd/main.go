@@ -62,7 +62,8 @@ func main() {
 	scanHdl := &handlers.ScanHandler{WorkerPool: workerPool}
 	jobHdl := &handlers.JobHandler{WorkerPool: workerPool}
 	historyHdl := &handlers.HistoryHandler{
-		Service: services.HistoryService{DB: db},
+		Service:    services.HistoryService{DB: db},
+		PDFService: services.PDFService{}, // ← เพิ่ม
 	}
 
 	// Setup Fiber

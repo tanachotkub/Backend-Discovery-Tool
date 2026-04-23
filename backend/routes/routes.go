@@ -33,4 +33,6 @@ func SetupRoutes(
 	scans.Get("/", historyHdl.GetAll)
 	scans.Get("/:id", historyHdl.GetByID)
 	scans.Delete("/:id", historyHdl.Delete)
+	scans.Get("/:id/export", historyHdl.Export) // ← เพิ่ม
+
 }

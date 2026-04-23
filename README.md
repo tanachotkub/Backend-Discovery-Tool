@@ -14,6 +14,7 @@
 - 📝 **Scan History** — บันทึกผลลัพธ์ลง PostgreSQL พร้อม Pagination
 - 🛡️ **SSRF Protection** — ป้องกัน private IP, localhost, AWS metadata endpoint
 - ⏱️ **Rate Limiting** — จำกัด 5 requests/minute/IP ผ่าน Redis
+- 📄 **Export PDF** — Export ผลลัพธ์การสแกนเป็น PDF Report
 - 🐳 **Docker Support** — รัน full stack ด้วย docker compose คำสั่งเดียว
 
 ---
@@ -26,7 +27,7 @@
 | Go + Fiber | เร็ว, lightweight, เหมาะกับ concurrent workload |
 | PostgreSQL + GORM | เก็บ scan history พร้อม soft delete |
 | Redis | Rate limiting + Job queue state |
-| chromedp + Chromium | Deep scan ทำงานได้ทั้ง local และ Docker |
+| chromedp + Chromium | Deep scan + Export PDF ทำงานได้ทั้ง local และ Docker |
 
 ### Frontend
 | Technology | เหตุผลที่เลือก |
@@ -56,11 +57,11 @@
 ┌─────────────────▼───────────────────────────────┐
 │                Backend (Go + Fiber)              │
 │                                                  │
-│  POST /api/scan  →  Rate Limiter (Redis)         │
-│                  →  Enqueue Job                  │
-│                                                  │
-│  GET /api/jobs/:id  →  ดึง Job Status            │
-│  GET /api/scans     →  Scan History              │
+│  POST /api/scan        →  Rate Limiter (Redis)   │
+│                        →  Enqueue Job            │
+│  GET  /api/jobs/:id    →  Job Status             │
+│  GET  /api/scans       →  Scan History           │
+│  GET  /api/scans/:id/export  →  Export PDF       │
 └──────────┬──────────────────┬───────────────────┘
            │                  │
 ┌──────────▼──────┐  ┌────────▼────────┐
@@ -87,69 +88,70 @@
 
 ```
 backend-discovery/
-├── backend/                    # Go API Server
+├── backend/
 │   ├── cmd/
-│   │   └── main.go             # Entry point
+│   │   └── main.go
 │   ├── config/
-│   │   └── config.go           # Load .env config
+│   │   └── config.go
 │   ├── database/
-│   │   ├── postgres.go         # PostgreSQL connection
-│   │   └── redis.go            # Redis connection
+│   │   ├── postgres.go
+│   │   └── redis.go
 │   ├── handlers/
-│   │   ├── scan.go             # POST /api/scan
-│   │   ├── job.go              # GET /api/jobs/:id
-│   │   └── history.go          # GET/DELETE /api/scans
+│   │   ├── scan.go
+│   │   ├── job.go
+│   │   └── history.go        # รวม Export handler
 │   ├── middlewares/
-│   │   ├── cors.go             # CORS
-│   │   └── rate_limiter.go     # Redis rate limiting
+│   │   ├── cors.go
+│   │   └── rate_limiter.go
 │   ├── models/
-│   │   ├── scan.go             # Request/Response structs
-│   │   ├── scan_history.go     # GORM model
-│   │   └── job.go              # Job struct
+│   │   ├── scan.go
+│   │   ├── scan_history.go
+│   │   └── job.go
 │   ├── routes/
-│   │   └── routes.go           # Route registration
+│   │   └── routes.go
 │   ├── services/
-│   │   ├── scanner.go          # Core scan logic
-│   │   ├── browser.go          # chromedp deep scan
-│   │   ├── history.go          # History service
-│   │   └── worker.go           # Redis job queue + worker pool
+│   │   ├── scanner.go
+│   │   ├── browser.go
+│   │   ├── history.go
+│   │   ├── worker.go
+│   │   └── pdf.go            # PDF generation ด้วย chromedp
 │   ├── docs/
-│   │   └── api.md              # API documentation
+│   │   └── api.md
 │   ├── Dockerfile
 │   ├── .dockerignore
 │   ├── .env.example
 │   ├── .gitignore
 │   └── go.mod
 │
-├── frontend/                   # Next.js App
+├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx           # Root layout + Prompt font
-│   │   ├── globals.css          # Light theme styles
-│   │   ├── page.tsx             # หน้าสแกนหลัก
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   ├── page.tsx
 │   │   └── history/
-│   │       ├── page.tsx         # หน้าประวัติ + pagination
+│   │       ├── page.tsx
 │   │       └── [id]/
-│   │           └── page.tsx     # หน้ารายละเอียด
+│   │           └── page.tsx  # มีปุ่ม Export PDF
 │   ├── components/
 │   │   ├── layout/
 │   │   │   └── Navbar.tsx
 │   │   └── ui/
-│   │       ├── ScanForm.tsx     # Form + Basic/Deep toggle
-│   │       └── JobStatus.tsx    # Poll job + แสดงผล collapsible
+│   │       ├── ScanForm.tsx
+│   │       └── JobStatus.tsx
 │   ├── lib/
-│   │   └── api.ts               # Axios API wrapper
+│   │   └── api.ts            # มี exportPDF()
 │   ├── types/
-│   │   └── index.ts             # TypeScript types
+│   │   └── index.ts
 │   ├── Dockerfile
 │   ├── .dockerignore
 │   ├── .env.local.example
 │   ├── .gitignore
-│   ├── next.config.js           # output: standalone (สำหรับ Docker)
+│   ├── next.config.js
 │   └── package.json
 │
-├── docker-compose.yml          # Full stack orchestration
-├── .env.example                # Environment variables template
-├── Makefile                    # Shortcut commands
+├── docker-compose.yml
+├── .env.example
+├── Makefile
 └── README.md
 ```
 
@@ -169,22 +171,18 @@ backend-discovery/
 
 ## วิธีที่ 1 — รันแบบ Manual (Development)
 
-### 1. Clone Repository
-
 ```bash
-git clone https://github.com/yourusername/backend-discovery.git
-cd backend-discovery
-```
-
-### 2. Setup Backend
-
-```bash
+# Backend
 cd backend
 cp .env.example .env
-# แก้ไข .env ตามเครื่องของคุณ
-
 go mod tidy
 go run cmd/main.go
+
+# Frontend (terminal ใหม่)
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
 ```
 
 ถ้า start สำเร็จจะเห็น
@@ -192,53 +190,16 @@ go run cmd/main.go
 ✅ PostgreSQL Connected
 ✅ Database migrated
 ✅ Redis Connected
-✅ Browser scanner ready (headless: false)
+✅ Browser scanner ready
 🔧 Starting 3 workers...
 🚀 Server running on :8080
 ```
 
-### 3. Setup Frontend
-
-```bash
-cd frontend
-cp .env.local.example .env.local
-
-npm install
-npm run dev
-```
-
-### 4. เปิดเว็บ
-
-```
-Frontend → http://localhost:3000
-Backend  → http://localhost:8080/api/health
-```
-
----
-
-## วิธีที่ 2 — รันด้วย Docker (แนะนำสำหรับ Demo)
-
-### 1. Setup
+## วิธีที่ 2 — รันด้วย Docker
 
 ```bash
 cp .env.example .env
-# แก้ไข password ใน .env
-```
-
-### 2. Build และรัน
-
-```bash
 docker compose up --build
-```
-
-### 3. รันครั้งต่อไป
-
-```bash
-# รันแบบ background
-docker compose up -d
-
-# หยุด (ข้อมูลยังอยู่)
-docker compose down
 ```
 
 ### เปิดเว็บ
@@ -259,18 +220,14 @@ PORT=8080
 APP_NAME=Backend Discovery Tool
 APP_ENV=development
 
-# PostgreSQL
 DB_DSN=host=localhost user=postgres password=yourpassword dbname=backend_discovery port=5432 sslmode=disable
 
-# Redis
 REDIS_URL=redis://localhost:6379
 
-# Worker
 WORKER_COUNT=3
 
-# Browser
-# false = เห็นหน้าต่าง Chromium (local dev)
-# true  = headless ไม่มีหน้าต่าง (Docker/production)
+# false = เห็นหน้าต่าง (local dev)
+# true  = headless (Docker/production)
 BROWSER_HEADLESS=false
 ```
 
@@ -280,7 +237,7 @@ BROWSER_HEADLESS=false
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-### Root `.env` (สำหรับ Docker)
+### Root `.env` (Docker)
 
 ```env
 DB_USER=postgres
@@ -304,6 +261,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 | `GET` | `/api/scans` | ดูประวัติทั้งหมด |
 | `GET` | `/api/scans/:id` | ดูประวัติรายการนั้น |
 | `DELETE` | `/api/scans/:id` | ลบประวัติ |
+| `GET` | `/api/scans/:id/export` | Export PDF report |
 
 ### Query Parameters สำหรับ `GET /api/scans`
 
@@ -327,35 +285,30 @@ curl -X POST http://localhost:8080/api/scan \
 }
 ```
 
-### ตัวอย่าง Deep Scan
+### Export PDF
 
 ```bash
-curl -X POST http://localhost:8080/api/scan \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://github.com", "deep_scan": true}'
+curl -O -J http://localhost:8080/api/scans/1/export
+# ได้ไฟล์ scan-report-1.pdf
 ```
 
-### ตัวอย่าง Result
+---
 
-```json
-{
-  "status": "success",
-  "url": "https://github.com",
-  "found_endpoints": [
-    "https://api.githubcopilot.com",
-    "https://api.github.com/_private/browser/stats"
-  ],
-  "headers": {
-    "server": "github.com"
-  },
-  "dns_results": [
-    "api.github.com → 20.205.243.168"
-  ],
-  "js_endpoints": ["..."],
-  "network_calls": ["[FETCH] https://api.github.com/..."],
-  "scan_duration": "0.90s",
-  "scan_mode": "deep"
-}
+## 📄 PDF Report มีอะไรบ้าง
+
+```
+หน้า 1
+├── Header — ชื่อเครื่องมือ + วันที่ generate
+├── Scan Information — URL, Date, Mode, Duration, Status, IP
+├── Summary — 4 stat boxes (HTML/DNS/JS/Network)
+├── Response Headers
+└── Found Endpoints
+
+หน้า 2+
+├── Mini header บอกว่าเป็น continued
+├── JS Endpoints
+├── Network Calls (badge FETCH / XHR)
+└── Footer "Page X of Y" ทุกหน้า
 ```
 
 ---
@@ -364,13 +317,13 @@ curl -X POST http://localhost:8080/api/scan \
 
 | มาตรการ | รายละเอียด |
 |---------|-----------|
-| SSRF Protection | Block localhost, 127.0.0.1, private IP (10.x, 172.16.x, 192.168.x), AWS metadata (169.254.x) |
+| SSRF Protection | Block localhost, private IP, AWS metadata (169.254.x) |
 | Rate Limiting | 5 requests/minute/IP ผ่าน Redis |
 | Response Size Limit | จำกัด 5MB ต่อ request |
 | Redirect Validation | ป้องกัน open redirect ไป internal network |
 | Request Timeout | 10 วินาที ต่อ request |
 | CORS | กำหนด allowed origins |
-| Stealth Mode | chromedp ซ่อน automation flag ผ่าน bot protection |
+| Stealth Mode | chromedp ซ่อน automation flag |
 
 ---
 
@@ -386,49 +339,21 @@ curl -X POST http://localhost:8080/api/scan \
 | js_endpoints | ❌ | ✅ |
 | network_calls | ❌ | ✅ |
 | ผ่าน bot protection | ❌ | ✅ |
-| รองรับ Docker | ✅ | ✅ |
+| Export PDF | ✅ | ✅ |
 
 ---
 
 ## 🐳 Docker Commands
 
 ```bash
-# รัน full stack
-docker compose up -d
-
-# หยุด (ข้อมูลยังอยู่)
-docker compose down
-
-# Build ใหม่ทั้งหมด
-docker compose build --no-cache
-
-# ดู logs ทั้งหมด
-docker compose logs -f
-
-# ดู logs เฉพาะ service
-docker compose logs -f backend
-docker compose logs -f frontend
-
-# ดูสถานะ
-docker compose ps
-
-# Restart service
-docker compose restart backend
-
-# ลบทุกอย่างรวม volume (ข้อมูลหาย!)
-docker compose down -v
+docker compose up -d          # รัน
+docker compose down           # หยุด (ข้อมูลยังอยู่)
+docker compose build --no-cache  # build ใหม่
+docker compose logs -f        # ดู logs ทั้งหมด
+docker compose logs -f backend   # ดู logs backend
+docker compose ps             # ดูสถานะ
+docker compose down -v        # ลบทุกอย่าง (ข้อมูลหาย!)
 ```
-
----
-
-## ⚠️ ข้อแตกต่าง Local vs Docker
-
-| | Local (Manual) | Docker |
-|--|---------------|--------|
-| Database | PostgreSQL บน Windows | PostgreSQL Container |
-| ข้อมูล | เก็บใน Windows | เก็บใน Docker Volume |
-| Browser | Chromium บน Windows | Chromium ใน Alpine |
-| BROWSER_HEADLESS | false (เห็นหน้าต่าง) | true (ไม่มีหน้าต่าง) |
 
 ---
 
@@ -439,13 +364,13 @@ docker compose down -v
 - [x] **Phase 3** — Headless Browser (chromedp) + JS Scanning + Async Worker Queue
 - [x] **Frontend** — Next.js Dashboard ภาษาไทย (Light theme + Prompt font)
 - [x] **Docker** — Dockerfile + docker-compose ครบทุก service
+- [x] **Export PDF** — PDF Report พร้อม page number และ mini header
 - [ ] **Cloud Deploy** — Deploy บน Railway / VPS + Nginx
 - [ ] **Authenticated Scan** — ส่ง cookies เพื่อ scan หลัง login
-- [ ] **Export Report** — Export ผลลัพธ์เป็น PDF
 
 ---
 
-## 🎓 สิ่งที่ได้เรียนรู้จากโปรเจคนี้
+## 🎓 สิ่งที่ได้เรียนรู้
 
 | หัวข้อ | รายละเอียด |
 |--------|-----------|
@@ -458,6 +383,7 @@ docker compose down -v
 | Database | GORM, PostgreSQL, Soft delete, Pagination |
 | Frontend | Next.js App Router, TypeScript, Tailwind CSS |
 | Docker | Multi-stage build, docker-compose orchestration |
+| PDF Generation | chromedp PrintToPDF, HTML to PDF |
 
 ---
 
