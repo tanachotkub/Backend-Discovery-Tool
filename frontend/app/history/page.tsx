@@ -10,6 +10,7 @@ import {
   CheckCircle, Eye
 } from 'lucide-react'
 import clsx from 'clsx'
+import Swal from 'sweetalert2'
 
 export default function HistoryPage() {
   const [data, setData] = useState<HistoryResponse | null>(null)
@@ -32,16 +33,88 @@ export default function HistoryPage() {
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
-  const handleDelete = async (id: number) => {
-    setDeleting(id)
-    try {
-      await deleteHistory(id)
-      fetchHistory()
-    } finally {
-      setDeleting(null)
-    }
-  }
+  const handleDelete = async (id: number, url: string) => {
+  // ยืนยันรอบที่ 1
+  const first = await Swal.fire({
+    title: 'ลบประวัติการสแกน?',
+    html: `<p style="font-size:13px;color:#64748b;margin-top:4px">
+             <code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:12px">
+               ${url}
+             </code>
+           </p>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ใช่ ลบเลย',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true,
+    customClass: {
+      popup: 'rounded-2xl',
+      confirmButton: 'rounded-xl',
+      cancelButton: 'rounded-xl',
+    },
+  })
 
+  if (!first.isConfirmed) return
+
+  // ยืนยันรอบที่ 2
+  const second = await Swal.fire({
+    title: 'แน่ใจหรือไม่?',
+    text: 'ข้อมูลจะถูกลบถาวร ไม่สามารถกู้คืนได้',
+    icon: 'error',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยัน ลบถาวร',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true,
+    customClass: {
+      popup: 'rounded-2xl',
+      confirmButton: 'rounded-xl',
+      cancelButton: 'rounded-xl',
+    },
+  })
+
+  if (!second.isConfirmed) return
+
+  // ลบจริง
+  setDeleting(id)
+  try {
+    await deleteHistory(id)
+    
+    // แจ้งสำเร็จ
+    await Swal.fire({
+      title: 'ลบแล้ว!',
+      text: 'ประวัติการสแกนถูกลบเรียบร้อย',
+      icon: 'success',
+      confirmButtonText: 'ตกลง',
+      confirmButtonColor: '#2563eb',
+      timer: 2000,
+      timerProgressBar: true,
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl',
+      },
+    })
+
+    fetchHistory()
+  } catch {
+    Swal.fire({
+      title: 'เกิดข้อผิดพลาด',
+      text: 'ไม่สามารถลบได้ กรุณาลองใหม่',
+      icon: 'error',
+      confirmButtonText: 'ตกลง',
+      confirmButtonColor: '#2563eb',
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl',
+      },
+    })
+  } finally {
+    setDeleting(null)
+  }
+}
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -154,9 +227,9 @@ export default function HistoryPage() {
 
 function HistoryRow({ item, onDelete, deleting }: {
   item: ScanHistory
-  onDelete: (id: number) => void
+  onDelete: (id: number, url: string) => void  // ← เพิ่ม url
   deleting: boolean
-}) {
+})  {
   const router = useRouter()
   const total = item.found_endpoints_count + item.js_endpoints_count + item.network_calls_count
 
@@ -208,7 +281,7 @@ function HistoryRow({ item, onDelete, deleting }: {
           รายละเอียด
         </button>
         <button
-          onClick={() => onDelete(item.id)}
+        onClick={() => onDelete(item.id, item.url)}  // ← ส่ง url ด้วย
           disabled={deleting}
           className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-ink-subtle hover:text-red-500 border border-transparent hover:border-red-200 transition-all disabled:opacity-30"
         >

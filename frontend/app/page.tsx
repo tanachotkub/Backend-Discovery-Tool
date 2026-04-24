@@ -57,7 +57,7 @@ export default function HomePage() {
               { icon: Globe, label: 'HTML Scanning', color: 'bg-blue-50 text-blue-700 border-blue-200' },
               { icon: Database, label: 'DNS Enumeration', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
               { icon: Shield, label: 'SSRF Protection', color: 'bg-violet-50 text-violet-700 border-violet-200' },
-              { icon: Zap, label: 'Deep Scan (Selenium)', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { icon: Zap, label: 'Deep Scan (Chromium)', color: 'bg-amber-50 text-amber-700 border-amber-200' },
             ].map(({ icon: Icon, label, color }) => (
               <span key={label} className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-medium ${color}`}>
                 <Icon className="w-3.5 h-3.5" />
