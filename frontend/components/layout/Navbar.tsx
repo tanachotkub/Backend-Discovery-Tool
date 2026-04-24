@@ -1,11 +1,12 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, Search, History, Activity } from 'lucide-react'
+import { Shield, Search, History, Activity, BarChart2 } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
   { href: '/', label: 'สแกน', icon: Search },
+  { href: '/dashboard', label: 'Dashboard', icon: BarChart2 }, // ← เพิ่ม
   { href: '/history', label: 'ประวัติ', icon: History },
 ]
 
@@ -23,7 +24,7 @@ export default function Navbar() {
           </div>
           <div>
             <span className="font-semibold text-ink text-sm">Backend Discovery</span>
-            <span className="text-primary-400 text-xs ml-1.5">v1.0.2</span>
+            <span className="text-primary-400 text-xs ml-1.5">v1.1.0</span>
           </div>
         </Link>
 

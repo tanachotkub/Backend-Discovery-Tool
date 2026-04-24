@@ -40,7 +40,6 @@ export async function getHistory(page = 1, perPage = 10, status = ''): Promise<H
   }
 }
 
-// ✅ เพิ่มใหม่
 export async function getHistoryById(id: number): Promise<ScanHistory> {
   const res = await api.get(`/api/scans/${id}`)
   return res.data.data
@@ -64,4 +63,22 @@ export async function exportPDF(id: number): Promise<void> {
   link.click()
   link.remove()
   window.URL.revokeObjectURL(url)
+}
+
+export interface DashboardStats {
+  total_scans: number
+  total_endpoints: number
+  success_rate: number
+  basic_scans: number
+  deep_scans: number
+  scan_per_day: { date: string; count: number }[]
+  top_urls: { url: string; count: number }[]
+  total_html_endpoints: number
+  total_dns_results: number
+  total_js_endpoints: number
+  total_network_calls: number
+}
+export async function getDashboardStats(days = 7): Promise<DashboardStats> {
+  const res = await api.get('/api/dashboard/stats', { params: { days } })
+  return res.data.data
 }

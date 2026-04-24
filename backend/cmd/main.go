@@ -65,7 +65,8 @@ func main() {
 		Service:    services.HistoryService{DB: db},
 		PDFService: services.PDFService{}, // ← เพิ่ม
 	}
-
+	dashSrv := services.DashboardService{DB: db}
+	dashHdl := &handlers.DashboardHandler{Service: dashSrv}
 	// Setup Fiber
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -89,7 +90,7 @@ func main() {
 	app.Use(helmet.New())
 	middlewares.SetupCORS(app)
 
-	routes.SetupRoutes(app, scanHdl, historyHdl, jobHdl)
+	routes.SetupRoutes(app, scanHdl, historyHdl, jobHdl, dashHdl)
 
 	// Graceful shutdown
 	go func() {

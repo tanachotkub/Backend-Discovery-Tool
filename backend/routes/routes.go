@@ -13,26 +13,25 @@ func SetupRoutes(
 	scanHdl *handlers.ScanHandler,
 	historyHdl *handlers.HistoryHandler,
 	jobHdl *handlers.JobHandler,
+	dashHdl *handlers.DashboardHandler, // ← เพิ่ม
 ) {
 	api := app.Group("/api")
 
 	api.Get("/health", scanHdl.Health)
+	api.Get("/dashboard/stats", dashHdl.GetStats) // ← เพิ่ม
 
-	// Rate limit เฉพาะ /scan
 	if database.RedisClient != nil {
 		api.Post("/scan", middlewares.RateLimiter(database.RedisClient), scanHdl.Scan)
 	} else {
 		api.Post("/scan", scanHdl.Scan)
 	}
 
-	// Job status
 	api.Get("/jobs/:id", jobHdl.GetJob)
 
-	// History
 	scans := api.Group("/scans")
 	scans.Get("/", historyHdl.GetAll)
 	scans.Get("/:id", historyHdl.GetByID)
 	scans.Delete("/:id", historyHdl.Delete)
-	scans.Get("/:id/export", historyHdl.Export) // ← เพิ่ม
+	scans.Get("/:id/export", historyHdl.Export)
 
 }
