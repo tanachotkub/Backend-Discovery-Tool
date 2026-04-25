@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // JobStatus คือสถานะของ scan job
 type JobStatus string
@@ -18,6 +20,7 @@ type Job struct {
 	URL       string      `json:"url"`
 	IPAddress string      `json:"ip_address"`
 	Status    JobStatus   `json:"status"`
+	Auth      *AuthConfig `json:"auth,omitempty"`
 	Result    *ScanResult `json:"result,omitempty"`
 	Error     string      `json:"error,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`

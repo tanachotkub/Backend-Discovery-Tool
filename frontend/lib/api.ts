@@ -1,13 +1,21 @@
 import axios from 'axios'
-import { Job, HistoryResponse, ScanHistory } from '@/types' // ← ต้องมี ScanHistory ด้วย
+import { Job, HistoryResponse, ScanHistory, AuthConfig } from '@/types' // ← ต้องมี ScanHistory ด้วย
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
   headers: { 'Content-Type': 'application/json' },
 })
 
-export async function startScan(url: string, deepScan: boolean): Promise<{ job_id: string; status: string }> {
-  const res = await api.post('/api/scan', { url, deep_scan: deepScan })
+export async function startScan(
+  url: string,
+  deepScan: boolean,
+  auth?: AuthConfig
+): Promise<{ job_id: string; status: string; authenticated: boolean }> {
+  const res = await api.post('/api/scan', {
+    url,
+    deep_scan: deepScan,
+    auth: auth ?? null,
+  })
   return res.data
 }
 
@@ -17,18 +25,7 @@ export async function getJob(jobId: string): Promise<Job> {
 }
 
 export async function getHistory(page = 1, perPage = 10, status = ''): Promise<HistoryResponse> {
-  const res = await api.get('/api/scans', { params: { page, per_page: perPage, status } })
-  
-  // Backend ส่งมาแบบนี้
-  // {
-  //   status: 'success',
-  //   data: [...],        ← array ตรงๆ
-  //   total: 10,
-  //   page: 1,
-  //   per_page: 10,
-  //   total_pages: 2
-  // }
-  
+  const res = await api.get('/api/scans', { params: { page, per_page: perPage, status } })  
   const { data, total, page: p, per_page, total_pages } = res.data
   
   return {

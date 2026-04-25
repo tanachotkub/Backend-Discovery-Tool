@@ -19,8 +19,6 @@ func (h *ScanHandler) Health(c *fiber.Ctx) error {
 		"version": "2.0.0",
 	})
 }
-
-// Scan รับ request แล้ว enqueue job → คืน job_id ทันที
 func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 	var req models.ScanRequest
 
@@ -43,8 +41,8 @@ func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 		req.URL = "https://" + req.URL
 	}
 
-	// Enqueue job แทนการ scan ตรงๆ
-	job, err := h.WorkerPool.EnqueueJob(req.URL, req.DeepScan, c.IP())
+	// ✅ ส่ง auth ไปด้วย
+	job, err := h.WorkerPool.EnqueueJob(req.URL, req.DeepScan, c.IP(), req.Auth)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -53,9 +51,10 @@ func (h *ScanHandler) Scan(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
-		"status":    "accepted",
-		"job_id":    job.ID,
-		"message":   "scan job created, use GET /api/jobs/:id to check status",
-		"deep_scan": req.DeepScan,
+		"status":        "accepted",
+		"job_id":        job.ID,
+		"message":       "scan job created",
+		"deep_scan":     req.DeepScan,
+		"authenticated": req.Auth != nil && len(req.Auth.Cookies) > 0,
 	})
 }

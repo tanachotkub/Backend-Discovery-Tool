@@ -4,6 +4,7 @@ import (
 	"backend-discovery/models"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -61,7 +62,7 @@ func (s ScannerService) ValidateURL(rawURL string) error {
 	return nil
 }
 
-func (s ScannerService) FetchHTML(targetURL string) (string, map[string]string, error) {
+func (s ScannerService) FetchHTMLWithAuth(targetURL string, auth *models.AuthConfig) (string, map[string]string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -80,6 +81,22 @@ func (s ScannerService) FetchHTML(targetURL string) (string, map[string]string, 
 		return "", nil, err
 	}
 	req.Header.Set("User-Agent", "BackendDiscovery/1.0 (Security Scanner)")
+
+	// ✅ inject cookies
+	if auth != nil {
+		for _, c := range auth.Cookies {
+			req.AddCookie(&http.Cookie{
+				Name:  c.Name,
+				Value: c.Value,
+			})
+			log.Printf("Scanner: added cookie %s to request", c.Name)
+		}
+
+		// ✅ inject headers
+		for k, v := range auth.Headers {
+			req.Header.Set(k, v)
+		}
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -161,7 +178,7 @@ func (s ScannerService) DNSLookup(domain string) []string {
 }
 
 // Scan — เพิ่มการบันทึก history
-func (s ScannerService) Scan(targetURL string, ipAddress string) models.ScanResult {
+func (s ScannerService) Scan(targetURL string, ipAddress string, auth *models.AuthConfig) models.ScanResult {
 	start := time.Now()
 
 	if err := s.ValidateURL(targetURL); err != nil {
@@ -175,7 +192,7 @@ func (s ScannerService) Scan(targetURL string, ipAddress string) models.ScanResu
 	parsed, _ := url.Parse(targetURL)
 	domain := parsed.Hostname()
 
-	html, headers, err := s.FetchHTML(targetURL)
+	html, headers, err := s.FetchHTMLWithAuth(targetURL, auth)
 	if err != nil {
 		return models.ScanResult{
 			Status: "error",

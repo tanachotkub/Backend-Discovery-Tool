@@ -38,13 +38,14 @@ func NewWorkerPool(db *gorm.DB, rdb *redis.Client, workerCount int, browser Brow
 }
 
 // EnqueueJob สร้าง job ใหม่และใส่เข้า Redis queue
-func (wp *WorkerPool) EnqueueJob(targetURL string, deepScan bool, ipAddress string) (*models.Job, error) {
+func (wp *WorkerPool) EnqueueJob(targetURL string, deepScan bool, ipAddress string, auth *models.AuthConfig) (*models.Job, error) {
 	ctx := context.Background()
 
 	job := &models.Job{
 		ID:        uuid.New().String(),
 		URL:       targetURL,
 		IPAddress: ipAddress,
+		Auth:      auth, // ← เพิ่ม
 		Status:    models.JobStatusPending,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -222,22 +223,24 @@ func (wp *WorkerPool) processJob(ctx context.Context, workerID int, payload stri
 	var result models.ScanResult
 
 	if deepScan {
-		// Basic scan ก่อน
-		result = wp.scanner.Scan(job.URL, job.IPAddress)
+		result = wp.scanner.Scan(job.URL, job.IPAddress, job.Auth)
 		if result.Status == "success" {
 			result.ScanMode = "deep"
-			// Playwright scan
-			browserResult, err := wp.browser.ScanWithBrowser(job.URL)
+
+			// ✅ ส่ง auth เข้าไปด้วย
+			browserResult, err := wp.browser.ScanWithAuth(job.URL, job.Auth)
 			if err != nil {
 				log.Printf("Worker #%d browser scan failed: %v", workerID, err)
 			} else {
 				result.NetworkCalls = browserResult.NetworkCalls
 				result.JSEndpoints = browserResult.JSEndpoints
+				result.Authenticated = job.Auth != nil && len(job.Auth.Cookies) > 0
 			}
 		}
 	} else {
-		result = wp.scanner.Scan(job.URL, job.IPAddress)
+		result = wp.scanner.Scan(job.URL, job.IPAddress, job.Auth)
 		result.ScanMode = "basic"
+		result.Authenticated = job.Auth != nil && len(job.Auth.Cookies) > 0
 	}
 
 	// ✅ Save DB ตรงนี้ที่เดียว หลังทุกอย่างเสร็จ

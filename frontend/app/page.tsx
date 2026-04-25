@@ -5,26 +5,27 @@ import ScanForm from '@/components/ui/ScanForm'
 import JobStatus from '@/components/ui/JobStatus'
 import { startScan } from '@/lib/api'
 import { Shield, Zap, Globe, Database, AlertCircle } from 'lucide-react'
+import { AuthConfig } from '@/types' // ← ต้องมี ScanHistory ด้วย
+
 
 export default function HomePage() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleScan = async (url: string, deepScan: boolean) => {
-    setLoading(true)
-    setError('')
-    setJobId(null)
-    try {
-      const res = await startScan(url, deepScan)
-      setJobId(res.job_id)
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
-    } finally {
-      setLoading(false)
-    }
+const handleScan = async (url: string, deepScan: boolean, auth?: AuthConfig) => {
+  setLoading(true)
+  setError('')
+  setJobId(null)
+  try {
+    const res = await startScan(url, deepScan, auth) // ← เพิ่ม auth
+    setJobId(res.job_id)
+  } catch (e: any) {
+    setError(e?.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+  } finally {
+    setLoading(false)
   }
-
+}
   return (
     <div className="min-h-screen">
       <Navbar />

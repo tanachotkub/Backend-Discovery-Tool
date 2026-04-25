@@ -48,3 +48,21 @@ export interface HistoryResponse {
   per_page: number
   total_pages: number
 }
+
+export interface Cookie {
+  name: string
+  value: string
+  domain?: string
+  path?: string
+}
+
+export interface AuthConfig {
+  cookies: Cookie[]
+  headers: Record<string, string>
+}
+
+export interface ScanRequest {
+  url: string
+  deep_scan: boolean
+  auth?: AuthConfig
+}
