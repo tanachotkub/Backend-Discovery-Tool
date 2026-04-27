@@ -96,7 +96,7 @@ const handleScan = async (url: string, deepScan: boolean, auth?: AuthConfig) => 
       {/* Footer */}
       <footer className="border-t border-ink-faint/50 py-8 px-6 text-center">
         <p className="text-ink-subtle text-xs">
-          Backend Discovery Tool v1.1.1 — ใช้เพื่อการศึกษาและได้รับอนุญาตเท่านั้น
+          Backend Discovery Tool v1.3.1 — ใช้เพื่อการศึกษาและได้รับอนุญาตเท่านั้น
         </p>
       </footer>
     </div>
