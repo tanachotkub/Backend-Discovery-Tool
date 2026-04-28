@@ -17,6 +17,7 @@
 - ⏱️ **Rate Limiting** — จำกัด 5 requests/minute/IP ผ่าน Redis
 - 📄 **Export PDF** — Export ผลลัพธ์การสแกนเป็น PDF Report
 - 📊 **Dashboard Analytics** — ภาพรวมสถิติการสแกนพร้อมกราฟ
+- 🌙 **Dark Mode** — สลับ Light/Dark theme ได้ จำการตั้งค่าไว้ใน localStorage
 - 🐳 **Docker Support** — รัน full stack ด้วย docker compose คำสั่งเดียว
 
 ---
@@ -35,7 +36,7 @@
 | Technology | เหตุผลที่เลือก |
 |------------|---------------|
 | Next.js 14 | App Router, Server Components |
-| Tailwind CSS | Utility-first, light theme |
+| Tailwind CSS | Utility-first, light/dark theme |
 | Recharts | กราฟ Dashboard สวยงาม |
 | SweetAlert2 | Dialog ยืนยันก่อนลบ |
 | Axios | HTTP client พร้อม interceptor |
@@ -56,6 +57,7 @@
 ┌─────────────────────────────────────────────────┐
 │                   Frontend (Next.js)             │
 │  Dashboard │ สแกน │ ประวัติ │ รายละเอียด        │
+│  Light/Dark Mode Toggle                          │
 └─────────────────┬───────────────────────────────┘
                   │ HTTP Request
 ┌─────────────────▼───────────────────────────────┐
@@ -73,21 +75,15 @@
 │  Worker Pool    │  │   PostgreSQL    │
 │  (3 goroutines) │  │  scan_histories │
 │                 │  └─────────────────┘
-│  Basic Scan:    │
-│  ├─ Fetch HTML  │  ┌─────────────────┐
-│  ├─ Regex       │  │     Redis       │
-│  ├─ DNS Lookup  │  │  ├─ Job Queue   │
-│  └─ Headers     │  │  └─ Rate Limit  │
-│                 │  └─────────────────┘
-│  Deep Scan:     │
-│  ├─ Basic Scan  │  ┌─────────────────┐
-│  ├─ chromedp    │  │  Chromium       │
-│  ├─ Network     │  │  (Headless)     │
-│  └─ JS Files    │  └─────────────────┘
-│                 │
-│  Auth Scan:     │
-│  ├─ Cookies     │
-│  └─ JWT Token   │
+│  Basic Scan     │
+│  Deep Scan      │  ┌─────────────────┐
+│  Auth Scan      │  │     Redis       │
+│                 │  │  ├─ Job Queue   │
+└──────────┬──────┘  │  └─ Rate Limit  │
+           │         └─────────────────┘
+┌──────────▼──────┐
+│  Chromium       │
+│  (Headless)     │
 └─────────────────┘
 ```
 
@@ -114,10 +110,10 @@ backend-discovery/
 │   ├── models/
 │   │   ├── scan.go            # AuthConfig, Cookie struct
 │   │   ├── scan_history.go
-│   │   └── job.go             # Auth field
+│   │   └── job.go
 │   ├── routes/routes.go
 │   ├── services/
-│   │   ├── scanner.go         # FetchHTMLWithAuth()
+│   │   ├── scanner.go
 │   │   ├── browser.go         # ScanWithAuth()
 │   │   ├── history.go
 │   │   ├── worker.go
@@ -129,20 +125,21 @@ backend-discovery/
 │
 ├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx
-│   │   ├── globals.css
+│   │   ├── layout.tsx          # ThemeProvider + anti-flash script
+│   │   ├── globals.css         # Light + Dark mode styles
 │   │   ├── page.tsx
 │   │   ├── dashboard/page.tsx
 │   │   └── history/
 │   │       ├── page.tsx
 │   │       └── [id]/page.tsx
 │   ├── components/
-│   │   ├── layout/Navbar.tsx
+│   │   ├── ThemeProvider.tsx   # Dark mode context + localStorage
+│   │   ├── layout/Navbar.tsx   # Dark mode toggle button
 │   │   └── ui/
-│   │       ├── ScanForm.tsx   # Auth section
+│   │       ├── ScanForm.tsx    # Auth section
 │   │       └── JobStatus.tsx
 │   ├── lib/api.ts
-│   ├── types/index.ts         # AuthConfig, Cookie types
+│   ├── types/index.ts
 │   ├── Dockerfile
 │   ├── next.config.js
 │   └── package.json
@@ -167,7 +164,7 @@ backend-discovery/
 
 ---
 
-## วิธีที่ 1 — รันแบบ Manual (Development)
+## วิธีที่ 1 — รันแบบ Manual
 
 ```bash
 # Backend
@@ -214,8 +211,7 @@ REDIS_URL=redis://localhost:6379
 
 WORKER_COUNT=3
 
-# false = เห็นหน้าต่าง (local dev)
-# true  = headless (Docker/production)
+# false = local dev | true = Docker/production
 BROWSER_HEADLESS=false
 ```
 
@@ -232,7 +228,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Health check |
-| `GET` | `/api/dashboard/stats` | Dashboard analytics |
+| `GET` | `/api/dashboard/stats?days=7` | Dashboard analytics |
 | `POST` | `/api/scan` | สร้าง scan job |
 | `GET` | `/api/jobs/:id` | เช็ค job status + result |
 | `GET` | `/api/scans` | ดูประวัติทั้งหมด |
@@ -240,7 +236,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 | `DELETE` | `/api/scans/:id` | ลบประวัติ |
 | `GET` | `/api/scans/:id/export` | Export PDF report |
 
-### Authenticated Scan Request
+### Authenticated Scan
 
 ```json
 POST /api/scan
@@ -260,38 +256,27 @@ POST /api/scan
 
 ---
 
-## 🔐 Authenticated Scan
-
-วิธีดึง Cookies จาก Browser
-
-```
-1. เปิดเว็บที่ login แล้วใน browser
-2. กด F12 → Application → Cookies
-3. copy ชื่อและค่าของ cookie ที่ต้องการ
-4. ใส่ใน ScanForm แล้วกด Scan
-```
-
-รองรับ 2 รูปแบบ
-
-```
-Cookies      → session cookie จาก browser DevTools
-Bearer Token → JWT token สำหรับ API authentication
-```
-
----
-
 ## 🔍 Scan Modes
 
 | | Basic | Deep | Auth |
-|--|-------|------|------|
+|--|:-----:|:----:|:----:|
 | HTML Endpoints | ✅ | ✅ | ✅ |
 | DNS Results | ✅ | ✅ | ✅ |
 | Headers | ✅ | ✅ | ✅ |
 | JS Endpoints | ❌ | ✅ | ✅ |
 | Network Calls | ❌ | ✅ | ✅ |
 | Bot protection | ❌ | ✅ | ✅ |
-| Login required pages | ❌ | ❌ | ✅ |
+| Login required | ❌ | ❌ | ✅ |
 | Export PDF | ✅ | ✅ | ✅ |
+
+---
+
+## 🌙 Dark Mode
+
+- สลับ Light/Dark ได้ด้วยปุ่มใน Navbar มุมขวา
+- จำการตั้งค่าไว้ใน `localStorage`
+- โหลดครั้งแรกตาม system preference อัตโนมัติ
+- ไม่มี flash ตอนโหลดหน้า
 
 ---
 
@@ -325,12 +310,13 @@ docker compose down -v           # ลบทุกอย่าง (ข้อม�
 
 ## 🗺️ Roadmap
 
-- [x] **v1.0.0** — Phase 1-3 + Frontend
+- [x] **v1.0.0** — Phase 1-3 + Frontend (HTML Scan, DNS, Deep Scan, Worker Queue)
 - [x] **v1.0.1** — chromedp + Docker Support
 - [x] **v1.0.2** — Export PDF Report
-- [x] **v1.1.0** — Dashboard Analytics
+- [x] **v1.1.0** — Dashboard Analytics (กราฟ, สถิติ, Top URLs)
 - [x] **v1.1.1** — Delete Confirmation (SweetAlert2) + UX Fix
 - [x] **v1.3.0** — Authenticated Scan (Cookies + Bearer Token)
+- [x] **v1.4.0** — Dark Mode Toggle
 - [ ] **v2.0.0** — Cloud Deploy (Railway / VPS + Nginx)
 
 ---
@@ -351,6 +337,7 @@ docker compose down -v           # ลบทุกอย่าง (ข้อม�
 | Docker | Multi-stage build, docker-compose orchestration |
 | PDF Generation | chromedp PrintToPDF, HTML to PDF |
 | Authentication | Cookie injection, Bearer Token, session management |
+| Theme System | Dark mode, localStorage, system preference detection |
 
 ---
 
