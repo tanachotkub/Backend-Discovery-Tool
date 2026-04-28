@@ -26,7 +26,7 @@ export default function Navbar() {
           </div>
           <div>
             <span className="font-semibold text-ink dark:text-white text-sm">Backend Discovery</span>
-            <span className="text-primary-400 text-xs ml-1.5">v1.3.1</span>
+            <span className="text-primary-400 text-xs ml-1.5">v1.4.0</span>
           </div>
         </Link>
 
