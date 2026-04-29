@@ -49,6 +49,7 @@ services:
       APP_NAME: Backend Discovery Tool
       DB_DSN: host=postgres user=${DB_USER:-bduser} password=${DB_PASSWORD:-bdpassword} dbname=${DB_NAME:-backend_discovery} port=5432 sslmode=disable TimeZone=Asia/Bangkok
       REDIS_URL: redis://redis:6379
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       WORKER_COUNT: ${WORKER_COUNT:-3}
       BROWSER_HEADLESS: "true"   # ← เพิ่ม
     ports:
