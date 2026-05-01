@@ -13,13 +13,17 @@ func SetupRoutes(
 	scanHdl *handlers.ScanHandler,
 	historyHdl *handlers.HistoryHandler,
 	jobHdl *handlers.JobHandler,
-	dashHdl *handlers.DashboardHandler, // ← เพิ่ม
+	dashHdl *handlers.DashboardHandler,
 ) {
 	api := app.Group("/api")
 
+	// ── System ──────────────────────────────
 	api.Get("/health", scanHdl.Health)
-	api.Get("/dashboard/stats", dashHdl.GetStats) // ← เพิ่ม
 
+	// ── Dashboard ───────────────────────────
+	api.Get("/dashboard/stats", dashHdl.GetStats)
+
+	// ── Scan ────────────────────────────────
 	if database.RedisClient != nil {
 		api.Post("/scan", middlewares.RateLimiter(database.RedisClient), scanHdl.Scan)
 	} else {
@@ -28,10 +32,10 @@ func SetupRoutes(
 
 	api.Get("/jobs/:id", jobHdl.GetJob)
 
+	// ── History ─────────────────────────────
 	scans := api.Group("/scans")
 	scans.Get("/", historyHdl.GetAll)
 	scans.Get("/:id", historyHdl.GetByID)
 	scans.Delete("/:id", historyHdl.Delete)
 	scans.Get("/:id/export", historyHdl.Export)
-
 }
